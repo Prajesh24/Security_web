@@ -40,14 +40,15 @@ export async function apiGet<T = any>(path: string): Promise<ApiResult<T>> {
   return { ok: res.ok, status: res.status, data };
 }
 
-export async function apiPost<T = any>(
+async function stateChanging<T>(
+  method: 'POST' | 'PATCH' | 'PUT' | 'DELETE',
   path: string,
   body?: unknown,
 ): Promise<ApiResult<T>> {
   await ensureCsrf();
   const csrf = readCookie('csrfToken');
   const res = await fetch(`${API_URL}${path}`, {
-    method: 'POST',
+    method,
     credentials: 'include',
     headers: {
       'Content-Type': 'application/json',
@@ -57,4 +58,12 @@ export async function apiPost<T = any>(
   });
   const data = await res.json().catch(() => ({}));
   return { ok: res.ok, status: res.status, data };
+}
+
+export function apiPost<T = any>(path: string, body?: unknown): Promise<ApiResult<T>> {
+  return stateChanging<T>('POST', path, body);
+}
+
+export function apiPatch<T = any>(path: string, body?: unknown): Promise<ApiResult<T>> {
+  return stateChanging<T>('PATCH', path, body);
 }

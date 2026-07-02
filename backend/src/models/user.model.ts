@@ -1,11 +1,29 @@
 import mongoose, { Document, Schema } from 'mongoose';
 
+export interface IUserProfile {
+  displayName: string;
+  bio: string;
+  phone: string;
+  address: {
+    line1: string;
+    city: string;
+    postcode: string;
+    country: string;
+  };
+  preferences: {
+    currency: 'NPR' | 'USD' | 'EUR' | 'GBP';
+    marketingEmails: boolean;
+  };
+}
+
 export interface IUser extends Document {
   _id: mongoose.Types.ObjectId;
   fullName: string;
   email: string;
   password: string; // bcrypt hash — never plaintext
   role: 'customer' | 'admin';
+  // User-editable, non-privileged personalisation data.
+  profile: IUserProfile;
   // Brute-force protection / account lockout state:
   failedLoginAttempts: number;
   lockUntil: Date | null;
@@ -32,6 +50,21 @@ const userSchema = new Schema<IUser>(
     },
     password: { type: String, required: true },
     role: { type: String, enum: ['customer', 'admin'], default: 'customer' },
+    profile: {
+      displayName: { type: String, default: '', trim: true },
+      bio: { type: String, default: '', trim: true },
+      phone: { type: String, default: '', trim: true },
+      address: {
+        line1: { type: String, default: '', trim: true },
+        city: { type: String, default: '', trim: true },
+        postcode: { type: String, default: '', trim: true },
+        country: { type: String, default: '', trim: true },
+      },
+      preferences: {
+        currency: { type: String, enum: ['NPR', 'USD', 'EUR', 'GBP'], default: 'NPR' },
+        marketingEmails: { type: Boolean, default: false },
+      },
+    },
     failedLoginAttempts: { type: Number, default: 0 },
     lockUntil: { type: Date, default: null },
     lastLoginAt: { type: Date, default: null },

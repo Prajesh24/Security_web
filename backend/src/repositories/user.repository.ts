@@ -19,6 +19,19 @@ export class UserRepository {
     return UserModel.findByIdAndUpdate(id, data, { new: true }).exec();
   }
 
+  /**
+   * Sets an explicit map of (dot-notated) fields. Callers build this map from a
+   * validated allowlist, so it is safe against mass assignment. runValidators
+   * enforces schema constraints (e.g. currency enum) on update.
+   */
+  updateFields(id: string, set: Record<string, unknown>): Promise<IUser | null> {
+    return UserModel.findByIdAndUpdate(
+      id,
+      { $set: set },
+      { new: true, runValidators: true },
+    ).exec();
+  }
+
   findAll(): Promise<IUser[]> {
     return UserModel.find().sort({ createdAt: -1 }).exec();
   }

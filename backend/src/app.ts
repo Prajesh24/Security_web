@@ -9,6 +9,7 @@ import { sanitizeRequest } from './utils/sanitize';
 import { errorHandler, notFoundHandler } from './middleware/errorHandler';
 
 import authRoutes from './routes/auth.route';
+import userRoutes from './routes/user.route';
 import productRoutes from './routes/product.route';
 import orderRoutes from './routes/order.route';
 import adminRoutes from './routes/admin.route';
@@ -66,6 +67,7 @@ app.get('/api/health', (_req, res) => {
 });
 
 app.use('/api/auth', authRoutes);
+app.use('/api/users', userRoutes);
 app.use('/api/products', productRoutes);
 app.use('/api/orders', orderRoutes);
 app.use('/api/admin', adminRoutes);
