@@ -12,6 +12,9 @@ router.get('/me', userController.me);
 // State-changing → CSRF protected. Identity is taken from the session only.
 router.patch('/me', csrfProtection, userController.updateProfile);
 
+// Password change (re-authentication + reuse prevention in the service).
+router.post('/me/password', csrfProtection, userController.changePassword);
+
 // Privacy: export a copy of my data / re-import my profile.
 router.get('/me/export', userController.exportData);
 router.post('/me/import', csrfProtection, userController.importData);

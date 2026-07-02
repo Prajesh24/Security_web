@@ -1,8 +1,10 @@
 import { Request, Response, NextFunction } from 'express';
 
 import { userService } from '../services/user.service';
+import { authService } from '../services/auth.service';
 import { auditService } from '../services/audit.service';
 import { UpdateProfileDTO, ProfileImportDTO } from '../dtos/profile.dto';
+import { ChangePasswordDTO } from '../dtos/auth.dto';
 import { HttpError } from '../errors/http-error';
 
 /**
@@ -73,6 +75,19 @@ export class UserController {
         success: true,
       });
       res.json({ success: true, message: 'Profile imported', user });
+    } catch (err) {
+      next(err);
+    }
+  }
+
+  async changePassword(req: Request, res: Response, next: NextFunction) {
+    try {
+      const parsed = ChangePasswordDTO.safeParse(req.body);
+      if (!parsed.success) {
+        throw new HttpError(400, parsed.error.issues[0]?.message ?? 'Invalid input.');
+      }
+      await authService.changePassword(req, req.user!.id, parsed.data);
+      res.json({ success: true, message: 'Password changed successfully.' });
     } catch (err) {
       next(err);
     }

@@ -1,6 +1,6 @@
 import { Request, Response, NextFunction } from 'express';
 
-import { authService } from '../services/auth.service';
+import { authService, isPasswordExpired } from '../services/auth.service';
 import { mfaService } from '../services/mfa.service';
 import { auditService } from '../services/audit.service';
 import { RegisterDTO, LoginDTO, MfaLoginDTO } from '../dtos/auth.dto';
@@ -73,7 +73,12 @@ export class AuthController {
 
       setAuthCookie(res, user);
       issueCsrfToken(req, res);
-      res.status(200).json({ success: true, message: 'Login successful', user });
+      res.status(200).json({
+        success: true,
+        message: 'Login successful',
+        user,
+        passwordExpired: isPasswordExpired(user),
+      });
     } catch (err) {
       next(err);
     }

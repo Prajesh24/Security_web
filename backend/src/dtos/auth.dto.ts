@@ -1,9 +1,11 @@
 import { z } from 'zod';
+import { isCommonPassword } from '../utils/passwordStrength';
 
 /**
  * Strong password policy enforced at the edge with Zod:
  *  - at least 8 characters
  *  - upper + lower case, a digit, and a special character
+ *  - not a well-known / common password
  * This raises the cost of guessing/brute-force and rejects weak passwords.
  */
 const strongPassword = z
@@ -13,7 +15,8 @@ const strongPassword = z
   .regex(/[a-z]/, 'Password must contain a lowercase letter')
   .regex(/[A-Z]/, 'Password must contain an uppercase letter')
   .regex(/[0-9]/, 'Password must contain a number')
-  .regex(/[^A-Za-z0-9]/, 'Password must contain a special character');
+  .regex(/[^A-Za-z0-9]/, 'Password must contain a special character')
+  .refine((p) => !isCommonPassword(p), 'That password is too common — choose another');
 
 export const RegisterDTO = z.object({
   fullName: z.string().min(2, 'Name is too short').max(80).trim(),
@@ -21,6 +24,17 @@ export const RegisterDTO = z.object({
   password: strongPassword,
 });
 export type RegisterDTO = z.infer<typeof RegisterDTO>;
+
+export const ChangePasswordDTO = z
+  .object({
+    currentPassword: z.string().min(1, 'Current password is required').max(72),
+    newPassword: strongPassword,
+  })
+  .refine((d) => d.currentPassword !== d.newPassword, {
+    message: 'New password must be different from the current one',
+    path: ['newPassword'],
+  });
+export type ChangePasswordDTO = z.infer<typeof ChangePasswordDTO>;
 
 export const LoginDTO = z.object({
   email: z.string().email('Invalid email address').toLowerCase().trim(),

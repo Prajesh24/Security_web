@@ -4,6 +4,7 @@ import { useCallback, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { apiPost } from '../../lib/api';
 import Captcha from '../../components/Captcha';
+import PasswordStrength from '../../components/PasswordStrength';
 
 export default function RegisterPage() {
   const router = useRouter();
@@ -73,6 +74,7 @@ export default function RegisterPage() {
             onChange={(e) => setPassword(e.target.value)}
             required
           />
+          <PasswordStrength password={password} />
           <Captcha onChange={onCaptcha} reloadSignal={captchaReload} />
           {error && <div className="alert alert-error">{error}</div>}
           <button className="btn-primary" type="submit" disabled={loading}>

@@ -1,14 +1,26 @@
 import { Request } from 'express';
 
 import { UserRepository } from '../repositories/user.repository';
-import { RegisterDTO, LoginDTO } from '../dtos/auth.dto';
+import { RegisterDTO, LoginDTO, ChangePasswordDTO } from '../dtos/auth.dto';
 import { hashPassword, verifyPassword } from '../utils/password';
 import { HttpError } from '../errors/http-error';
 import { auditService } from './audit.service';
-import { MAX_LOGIN_ATTEMPTS, LOCK_MINUTES } from '../config';
+import {
+  MAX_LOGIN_ATTEMPTS,
+  LOCK_MINUTES,
+  PASSWORD_HISTORY,
+  PASSWORD_MAX_AGE_DAYS,
+} from '../config';
 import { IUser } from '../models/user.model';
 
 const userRepository = new UserRepository();
+
+/** True if the password is older than the configured maximum age. */
+export function isPasswordExpired(user: IUser): boolean {
+  if (!user.passwordChangedAt) return false;
+  const ageMs = Date.now() - new Date(user.passwordChangedAt).getTime();
+  return ageMs > PASSWORD_MAX_AGE_DAYS * 24 * 60 * 60 * 1000;
+}
 
 // Same message for "no such user" and "wrong password" → prevents attackers
 // from enumerating which emails are registered.
@@ -35,6 +47,8 @@ export class AuthService {
       email: dto.email,
       password: hashed,
       role: 'customer',
+      passwordChangedAt: new Date(),
+      passwordHistory: [hashed], // seed reuse-prevention history
     });
 
     await auditService.log(req, {
@@ -110,6 +124,55 @@ export class AuthService {
     });
 
     return user;
+  }
+
+  /**
+   * Changes a user's password with full lifecycle protection:
+   *  - the current password must be proven (re-authentication),
+   *  - the new password must not match any of the last N (reuse prevention),
+   *  - the old hash is pushed onto a capped history and the change is timestamped.
+   */
+  async changePassword(req: Request, userId: string, dto: ChangePasswordDTO): Promise<void> {
+    const user = await userRepository.findById(userId);
+    if (!user) throw new HttpError(404, 'User not found.');
+
+    if (!(await verifyPassword(dto.currentPassword, user.password))) {
+      await auditService.log(req, {
+        event: 'PASSWORD_CHANGE',
+        email: user.email,
+        userId,
+        success: false,
+        detail: 'wrong current password',
+      });
+      throw new HttpError(400, 'Current password is incorrect.');
+    }
+
+    // Reuse prevention: compare the new password against the current hash and
+    // every remembered historical hash.
+    const history = [user.password, ...(user.passwordHistory ?? [])];
+    for (const oldHash of history) {
+      if (await verifyPassword(dto.newPassword, oldHash)) {
+        throw new HttpError(400, `Do not reuse any of your last ${PASSWORD_HISTORY} passwords.`);
+      }
+    }
+
+    const newHash = await hashPassword(dto.newPassword);
+    const trimmedHistory = [user.password, ...(user.passwordHistory ?? [])].slice(
+      0,
+      PASSWORD_HISTORY,
+    );
+    await userRepository.updateById(userId, {
+      password: newHash,
+      passwordChangedAt: new Date(),
+      passwordHistory: trimmedHistory,
+    });
+
+    await auditService.log(req, {
+      event: 'PASSWORD_CHANGE',
+      email: user.email,
+      userId,
+      success: true,
+    });
   }
 }
 

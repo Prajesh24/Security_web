@@ -33,6 +33,10 @@ export interface IUser extends Document {
   mfaEnabled: boolean;
   mfaSecret: string | null;
   mfaPendingSecret: string | null;
+  // Password lifecycle: when it was last set, and hashes of recent passwords
+  // (for reuse prevention). History never contains plaintext.
+  passwordChangedAt: Date;
+  passwordHistory: string[];
   createdAt: Date;
   updatedAt: Date;
 }
@@ -71,6 +75,8 @@ const userSchema = new Schema<IUser>(
     mfaEnabled: { type: Boolean, default: false },
     mfaSecret: { type: String, default: null },
     mfaPendingSecret: { type: String, default: null },
+    passwordChangedAt: { type: Date, default: Date.now },
+    passwordHistory: { type: [String], default: [] },
   },
   { timestamps: true },
 );
@@ -83,6 +89,7 @@ userSchema.set('toJSON', {
     delete ret.lockUntil;
     delete ret.mfaSecret;
     delete ret.mfaPendingSecret;
+    delete ret.passwordHistory;
     delete ret.__v;
     // Expose only whether MFA is on, never the secret material.
     return ret;
