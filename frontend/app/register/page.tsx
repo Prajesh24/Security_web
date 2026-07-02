@@ -1,8 +1,9 @@
 'use client';
 
-import { useState } from 'react';
+import { useCallback, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { apiPost } from '../../lib/api';
+import Captcha from '../../components/Captcha';
 
 export default function RegisterPage() {
   const router = useRouter();
@@ -12,16 +13,31 @@ export default function RegisterPage() {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
 
+  const [captchaToken, setCaptchaToken] = useState('');
+  const [captchaAnswer, setCaptchaAnswer] = useState('');
+  const [captchaReload, setCaptchaReload] = useState(0);
+  const onCaptcha = useCallback((t: string, a: string) => {
+    setCaptchaToken(t);
+    setCaptchaAnswer(a);
+  }, []);
+
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
     setError('');
     setLoading(true);
-    const res = await apiPost('/api/auth/register', { fullName, email, password });
+    const res = await apiPost('/api/auth/register', {
+      fullName,
+      email,
+      password,
+      captchaToken,
+      captchaAnswer,
+    });
     setLoading(false);
     if (res.ok) {
       router.push('/');
     } else {
       setError(res.data?.message || 'Registration failed.');
+      setCaptchaReload((n) => n + 1);
     }
   }
 
@@ -57,6 +73,7 @@ export default function RegisterPage() {
             onChange={(e) => setPassword(e.target.value)}
             required
           />
+          <Captcha onChange={onCaptcha} reloadSignal={captchaReload} />
           {error && <div className="alert alert-error">{error}</div>}
           <button className="btn-primary" type="submit" disabled={loading}>
             {loading ? 'Creating…' : 'Create Account'}

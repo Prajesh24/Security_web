@@ -6,6 +6,7 @@ import { auditService } from '../services/audit.service';
 import { RegisterDTO, LoginDTO, MfaLoginDTO } from '../dtos/auth.dto';
 import { signToken, signMfaChallenge, verifyMfaChallenge } from '../utils/jwt';
 import { issueCsrfToken } from '../middleware/csrf.middleware';
+import { generateCaptcha } from '../utils/captcha';
 import { HttpError } from '../errors/http-error';
 import { IS_PROD } from '../config';
 import { IUser } from '../models/user.model';
@@ -131,6 +132,12 @@ export class AuthController {
   async csrf(req: Request, res: Response) {
     const token = issueCsrfToken(req, res);
     res.status(200).json({ success: true, csrfToken: token });
+  }
+
+  // Issues a fresh CAPTCHA challenge (question rendered as SVG + signed token).
+  async captcha(_req: Request, res: Response) {
+    const { captchaToken, svg } = generateCaptcha();
+    res.status(200).json({ success: true, captchaToken, svg });
   }
 }
 

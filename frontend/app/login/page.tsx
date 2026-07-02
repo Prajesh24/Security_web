@@ -1,8 +1,9 @@
 'use client';
 
-import { useState } from 'react';
+import { useCallback, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { apiPost } from '../../lib/api';
+import Captcha from '../../components/Captcha';
 
 export default function LoginPage() {
   const router = useRouter();
@@ -10,6 +11,15 @@ export default function LoginPage() {
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+
+  // CAPTCHA challenge state.
+  const [captchaToken, setCaptchaToken] = useState('');
+  const [captchaAnswer, setCaptchaAnswer] = useState('');
+  const [captchaReload, setCaptchaReload] = useState(0);
+  const onCaptcha = useCallback((t: string, a: string) => {
+    setCaptchaToken(t);
+    setCaptchaAnswer(a);
+  }, []);
 
   // MFA challenge state — set once the server asks for a second factor.
   const [mfaToken, setMfaToken] = useState<string | null>(null);
@@ -24,7 +34,12 @@ export default function LoginPage() {
     e.preventDefault();
     setError('');
     setLoading(true);
-    const res = await apiPost('/api/auth/login', { email, password });
+    const res = await apiPost('/api/auth/login', {
+      email,
+      password,
+      captchaToken,
+      captchaAnswer,
+    });
     setLoading(false);
     if (res.ok && res.data?.mfaRequired) {
       // Password accepted — now require the authenticator code.
@@ -34,6 +49,7 @@ export default function LoginPage() {
     } else {
       // Server returns a single generic message for all failures.
       setError(res.data?.message || 'Login failed.');
+      setCaptchaReload((n) => n + 1); // one-time challenge → refresh it
     }
   }
 
@@ -101,6 +117,7 @@ export default function LoginPage() {
             onChange={(e) => setPassword(e.target.value)}
             required
           />
+          <Captcha onChange={onCaptcha} reloadSignal={captchaReload} />
           {error && <div className="alert alert-error">{error}</div>}
           <button className="btn-primary" type="submit" disabled={loading}>
             {loading ? 'Signing in…' : 'Sign In'}
