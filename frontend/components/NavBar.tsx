@@ -28,6 +28,7 @@ export default function NavBar() {
       <div className="nav-links">
         <a href="/">Shop</a>
         <a href="/orders">My Orders</a>
+        <a href="/account">Account</a>
         <a href="/cart" className="cart-link">
           Cart
           {count > 0 && <span className="cart-badge">{count}</span>}

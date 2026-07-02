@@ -46,7 +46,7 @@ export default function Captcha({ onChange, reloadSignal = 0 }: CaptchaProps) {
         />
         <button
           type="button"
-          className="btn-secondary"
+          className="btn-outline btn-sm"
           onClick={load}
           aria-label="Get a new challenge"
           style={{ padding: '4px 10px' }}
