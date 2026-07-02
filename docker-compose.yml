@@ -1,0 +1,62 @@
+# Reproducible multi-container environment for GadgetHub.
+#
+#   docker compose up --build
+#
+# Brings up MongoDB, the API and the web app on a private network. Only the
+# ports that need to be reachable from the host are published; MongoDB is NOT
+# exposed to the host by default (defence in depth).
+
+services:
+  mongo:
+    image: mongo:7
+    restart: unless-stopped
+    environment:
+      MONGO_INITDB_DATABASE: gadgethub
+    volumes:
+      - mongo-data:/data/db
+    networks:
+      - gadgethub
+    healthcheck:
+      test: ['CMD', 'mongosh', '--quiet', '--eval', "db.runCommand('ping').ok"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  backend:
+    build: ./backend
+    restart: unless-stopped
+    depends_on:
+      mongo:
+        condition: service_healthy
+    environment:
+      NODE_ENV: production
+      PORT: '6060'
+      MONGODB_URI: mongodb://mongo:27017/gadgethub
+      CLIENT_URL: http://localhost:3000
+      # Provide real secrets via a .env file or your orchestrator's secret store.
+      JWT_SECRET: ${JWT_SECRET:?set JWT_SECRET in your environment}
+      ENCRYPTION_KEY: ${ENCRYPTION_KEY:?set ENCRYPTION_KEY in your environment}
+    ports:
+      - '6060:6060'
+    networks:
+      - gadgethub
+
+  frontend:
+    build:
+      context: ./frontend
+      args:
+        NEXT_PUBLIC_API_URL: http://localhost:6060
+    restart: unless-stopped
+    depends_on:
+      - backend
+    ports:
+      - '3000:3000'
+    networks:
+      - gadgethub
+
+volumes:
+  mongo-data:
+
+networks:
+  gadgethub:
+    driver: bridge
