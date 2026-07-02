@@ -1,0 +1,30 @@
+name: CodeQL (SAST)
+
+# Static application security testing over the JS/TS source, on every push/PR
+# to main and on a weekly schedule to catch newly-published query updates.
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  schedule:
+    - cron: '0 3 * * 1' # Mondays 03:00 UTC
+
+permissions:
+  contents: read
+  security-events: write # required to upload SARIF results
+
+jobs:
+  analyze:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Initialise CodeQL
+        uses: github/codeql-action/init@v3
+        with:
+          languages: javascript-typescript
+          queries: security-and-quality
+      - name: Autobuild
+        uses: github/codeql-action/autobuild@v3
+      - name: Analyse
+        uses: github/codeql-action/analyze@v3
