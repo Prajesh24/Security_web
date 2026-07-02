@@ -27,3 +27,15 @@ export const LoginDTO = z.object({
   password: z.string().min(1, 'Password is required').max(72),
 });
 export type LoginDTO = z.infer<typeof LoginDTO>;
+
+// A TOTP code is always exactly six digits.
+const totpCode = z.string().regex(/^\d{6}$/, 'Enter the 6-digit code');
+
+export const MfaLoginDTO = z.object({
+  mfaToken: z.string().min(1),
+  code: totpCode,
+});
+export type MfaLoginDTO = z.infer<typeof MfaLoginDTO>;
+
+export const MfaCodeDTO = z.object({ code: totpCode });
+export type MfaCodeDTO = z.infer<typeof MfaCodeDTO>;

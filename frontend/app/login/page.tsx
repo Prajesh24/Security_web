@@ -11,26 +11,79 @@ export default function LoginPage() {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
 
+  // MFA challenge state — set once the server asks for a second factor.
+  const [mfaToken, setMfaToken] = useState<string | null>(null);
+  const [code, setCode] = useState('');
+
+  function redirect() {
+    const next = new URLSearchParams(window.location.search).get('next') || '/';
+    router.push(next);
+  }
+
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
     setError('');
     setLoading(true);
     const res = await apiPost('/api/auth/login', { email, password });
     setLoading(false);
-    if (res.ok) {
-      const next = new URLSearchParams(window.location.search).get('next') || '/';
-      router.push(next);
+    if (res.ok && res.data?.mfaRequired) {
+      // Password accepted — now require the authenticator code.
+      setMfaToken(res.data.mfaToken);
+    } else if (res.ok) {
+      redirect();
     } else {
       // Server returns a single generic message for all failures.
       setError(res.data?.message || 'Login failed.');
     }
   }
 
+  async function onVerify(e: React.FormEvent) {
+    e.preventDefault();
+    setError('');
+    setLoading(true);
+    const res = await apiPost('/api/auth/mfa/verify-login', { mfaToken, code });
+    setLoading(false);
+    if (res.ok) {
+      redirect();
+    } else {
+      setError(res.data?.message || 'Invalid code.');
+    }
+  }
+
+  if (mfaToken) {
+    return (
+      <div className="container">
+        <div className="card card-narrow">
+          <h1>Two-factor verification</h1>
+          <p className="muted">Enter the 6-digit code from your authenticator app.</p>
+          <form onSubmit={onVerify}>
+            <label htmlFor="code">Authentication code</label>
+            <input
+              id="code"
+              inputMode="numeric"
+              autoComplete="one-time-code"
+              pattern="\d{6}"
+              maxLength={6}
+              value={code}
+              onChange={(e) => setCode(e.target.value.replace(/\D/g, ''))}
+              autoFocus
+              required
+            />
+            {error && <div className="alert alert-error">{error}</div>}
+            <button className="btn-primary" type="submit" disabled={loading}>
+              {loading ? 'Verifying…' : 'Verify'}
+            </button>
+          </form>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="container">
       <div className="card card-narrow">
         <h1>Sign in</h1>
-        <p className="muted">Welcome back to SecureBank.</p>
+        <p className="muted">Welcome back to GadgetHub.</p>
         <form onSubmit={onSubmit}>
           <label htmlFor="email">Email</label>
           <input

@@ -1,13 +1,17 @@
 import { Request, Response, NextFunction } from 'express';
 
 import { authService } from '../services/auth.service';
-import { RegisterDTO, LoginDTO } from '../dtos/auth.dto';
-import { signToken } from '../utils/jwt';
+import { mfaService } from '../services/mfa.service';
+import { auditService } from '../services/audit.service';
+import { RegisterDTO, LoginDTO, MfaLoginDTO } from '../dtos/auth.dto';
+import { signToken, signMfaChallenge, verifyMfaChallenge } from '../utils/jwt';
 import { issueCsrfToken } from '../middleware/csrf.middleware';
 import { HttpError } from '../errors/http-error';
 import { IS_PROD } from '../config';
 import { IUser } from '../models/user.model';
+import { UserRepository } from '../repositories/user.repository';
 
+const userRepository = new UserRepository();
 const TOKEN_COOKIE = 'token';
 
 // httpOnly: JS can't read it (XSS-resistant). secure: HTTPS-only in prod.
@@ -46,6 +50,69 @@ export class AuthController {
         throw new HttpError(400, 'Invalid email or password.');
       }
       const user = await authService.login(req, parsed.data);
+
+      // Second factor: if MFA is enabled, do NOT establish a session yet.
+      // Issue a short-lived, single-purpose challenge token the client must
+      // exchange together with a valid TOTP code.
+      if (user.mfaEnabled) {
+        await auditService.log(req, {
+          event: 'MFA_CHALLENGE',
+          email: user.email,
+          userId: user._id.toString(),
+          success: true,
+          detail: 'password ok, awaiting TOTP',
+        });
+        return res.status(200).json({
+          success: true,
+          mfaRequired: true,
+          mfaToken: signMfaChallenge(user._id.toString()),
+          message: 'Enter the code from your authenticator app.',
+        });
+      }
+
+      setAuthCookie(res, user);
+      issueCsrfToken(req, res);
+      res.status(200).json({ success: true, message: 'Login successful', user });
+    } catch (err) {
+      next(err);
+    }
+  }
+
+  /** Second step of MFA login: exchange challenge token + TOTP code for a session. */
+  async verifyMfaLogin(req: Request, res: Response, next: NextFunction) {
+    try {
+      const parsed = MfaLoginDTO.safeParse(req.body);
+      if (!parsed.success) {
+        throw new HttpError(400, 'A 6-digit code is required.');
+      }
+      let userId: string;
+      try {
+        userId = verifyMfaChallenge(parsed.data.mfaToken).id;
+      } catch {
+        throw new HttpError(401, 'Your verification session expired. Please sign in again.');
+      }
+
+      const user = await userRepository.findById(userId);
+      if (!user || !user.mfaEnabled) {
+        throw new HttpError(401, 'Invalid verification session.');
+      }
+      if (!(await mfaService.verifyCode(user, parsed.data.code))) {
+        await auditService.log(req, {
+          event: 'MFA_VERIFY',
+          email: user.email,
+          userId: user._id.toString(),
+          success: false,
+          detail: 'wrong TOTP code',
+        });
+        throw new HttpError(401, 'Invalid authentication code.');
+      }
+
+      await auditService.log(req, {
+        event: 'MFA_VERIFY',
+        email: user.email,
+        userId: user._id.toString(),
+        success: true,
+      });
       setAuthCookie(res, user);
       issueCsrfToken(req, res);
       res.status(200).json({ success: true, message: 'Login successful', user });
