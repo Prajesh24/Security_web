@@ -1,5 +1,5 @@
 /**
- * Thin API client for the SecureBank backend.
+ * Thin API client for the GadgetHub backend.
  *
  * Security notes:
  *  - We NEVER store the JWT in localStorage. It lives in an httpOnly cookie set

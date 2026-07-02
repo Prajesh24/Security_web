@@ -59,6 +59,18 @@ security web/
 | 17 | **Generic error messages** (no user enumeration / stack traces) | `errorHandler.ts`, `auth.service.ts` | Information leakage |
 | 18 | **Request body size cap (10 kb)** | `app.ts` | Large-payload denial of service |
 | 19 | **Output encoding** (React auto-escapes all values) | frontend | Stored / reflected XSS |
+| 20 | **Multi-factor authentication (TOTP)** with stepped login | `services/mfa.service.ts` | Credential theft / stolen-password reuse |
+| 21 | **AES-256-GCM encryption at rest** for MFA secrets | `utils/crypto.ts` | Secret exposure if the DB leaks |
+| 22 | **Self-hosted HMAC CAPTCHA** on register/login | `utils/captcha.ts` | Bots, automated brute force |
+| 23 | **Strict-allowlist profile updates** | `dtos/profile.dto.ts` | Mass assignment / privilege escalation |
+| 24 | **Data export/import** (minimised, profile-only import) | `services/user.service.ts` | Privacy / data portability |
+| 25 | **Password reuse prevention + expiry + strength** | `services/auth.service.ts`, `utils/passwordStrength.ts` | Weak/recycled passwords |
+| 26 | **IP allow-list / block-list** | `middleware/ipAccess.middleware.ts` | Network-level abuse; locked deployments |
+| 27 | **Containerisation** (non-root multi-stage images) | `*/Dockerfile`, `docker-compose.yml` | Reproducible, least-privilege runtime |
+| 28 | **CI/CD security gates** (audit, CodeQL, Gitleaks) | `.github/workflows/` | Vulnerable deps, secrets, insecure code |
+
+See also **[SECURITY.md](SECURITY.md)** (risk register) and **[docs/](docs/)**
+(pentest report, report outline, references).
 
 ---
 
@@ -91,6 +103,16 @@ npm run dev                   # starts the store on http://localhost:3000
 ```
 
 Open **http://localhost:3000**.
+
+### Or run everything with Docker
+
+```bash
+cp .env.example .env          # set JWT_SECRET and ENCRYPTION_KEY
+docker compose up --build     # mongo + backend + frontend
+docker compose exec backend node dist/seed.js   # seed demo data
+```
+
+> MongoDB is kept on the private compose network and is not published to the host.
 
 ### Demo accounts (created by `npm run seed`)
 
