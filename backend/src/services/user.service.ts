@@ -1,9 +1,11 @@
 import { UserRepository } from '../repositories/user.repository';
-import { UpdateProfileDTO } from '../dtos/profile.dto';
+import { OrderRepository } from '../repositories/order.repository';
+import { UpdateProfileDTO, ProfileImportDTO } from '../dtos/profile.dto';
 import { IUser } from '../models/user.model';
 import { HttpError } from '../errors/http-error';
 
 const userRepository = new UserRepository();
+const orderRepository = new OrderRepository();
 
 export class UserService {
   getById(id: string): Promise<IUser | null> {
@@ -41,6 +43,39 @@ export class UserService {
     const updated = await userRepository.updateFields(id, set);
     if (!updated) throw new HttpError(404, 'User not found.');
     return updated;
+  }
+
+  /**
+   * Data portability (privacy): assembles a machine-readable copy of everything
+   * we hold about the user. Sensitive material — the password hash, MFA secret,
+   * lockout internals — is deliberately excluded (the model's toJSON strips
+   * them), honouring data-minimisation.
+   */
+  async exportData(id: string) {
+    const user = await userRepository.findById(id);
+    if (!user) throw new HttpError(404, 'User not found.');
+    const orders = await orderRepository.findByUser(id);
+
+    return {
+      exportedAt: new Date().toISOString(),
+      schema: 'gadgethub.userdata.v1',
+      account: {
+        id: user._id.toString(),
+        fullName: user.fullName,
+        email: user.email,
+        role: user.role,
+        mfaEnabled: user.mfaEnabled,
+        createdAt: user.createdAt,
+        lastLoginAt: user.lastLoginAt,
+      },
+      profile: user.profile,
+      orders: orders.map((o) => o.toJSON()),
+    };
+  }
+
+  /** Re-applies profile fields from an uploaded export. Only the profile is honoured. */
+  async importData(id: string, payload: ProfileImportDTO): Promise<IUser> {
+    return this.updateProfile(id, payload.profile);
   }
 }
 

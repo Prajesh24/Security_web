@@ -43,3 +43,15 @@ export const UpdateProfileDTO = z
   .strict();
 
 export type UpdateProfileDTO = z.infer<typeof UpdateProfileDTO>;
+
+/**
+ * Import contract for a previously-exported data file. We only ever re-apply
+ * the user's own *profile* (the same allowlist as an update); everything else
+ * in an uploaded file — ids, roles, emails, order history — is ignored. The
+ * wrapper is non-strict so extra top-level keys from the export envelope don't
+ * fail the import, but the nested `profile` is validated by the strict allowlist.
+ */
+export const ProfileImportDTO = z.object({
+  profile: UpdateProfileDTO,
+});
+export type ProfileImportDTO = z.infer<typeof ProfileImportDTO>;
