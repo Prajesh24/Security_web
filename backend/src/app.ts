@@ -5,6 +5,7 @@ import cookieParser from 'cookie-parser';
 
 import { CLIENT_URL } from './config';
 import { globalLimiter } from './middleware/rateLimit.middleware';
+import { ipAccessControl } from './middleware/ipAccess.middleware';
 import { sanitizeRequest } from './utils/sanitize';
 import { errorHandler, notFoundHandler } from './middleware/errorHandler';
 
@@ -19,6 +20,10 @@ const app = express();
 // Express sits behind a proxy in many deployments; trust it so req.ip and
 // secure-cookie detection work correctly.
 app.set('trust proxy', 1);
+
+// ── Network access control ────────────────────────────────────────────────────
+// Deny-by-default allowlist + explicit blocklist, evaluated before anything else.
+app.use(ipAccessControl);
 
 // ── Security headers (Helmet) ─────────────────────────────────────────────────
 // Sets a strict Content-Security-Policy, HSTS, X-Content-Type-Options,
