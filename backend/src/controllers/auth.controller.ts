@@ -2,8 +2,15 @@ import { Request, Response, NextFunction } from 'express';
 
 import { authService, isPasswordExpired } from '../services/auth.service';
 import { mfaService } from '../services/mfa.service';
+import { passwordlessService } from '../services/passwordless.service';
 import { auditService } from '../services/audit.service';
-import { RegisterDTO, LoginDTO, MfaLoginDTO } from '../dtos/auth.dto';
+import {
+  RegisterDTO,
+  LoginDTO,
+  MfaLoginDTO,
+  MagicRequestDTO,
+  MagicVerifyDTO,
+} from '../dtos/auth.dto';
 import {
   signToken,
   signMfaChallenge,
@@ -128,6 +135,47 @@ export class AuthController {
         userId: user._id.toString(),
         success: true,
       });
+      setAuthCookie(req, res, user);
+      issueCsrfToken(req, res);
+      res.status(200).json({ success: true, message: 'Login successful', user });
+    } catch (err) {
+      next(err);
+    }
+  }
+
+  // ── Passwordless (magic-link) login ────────────────────────────────────────
+  /** Step 1: request a one-time login link (generic response — no enumeration). */
+  async magicRequest(req: Request, res: Response, next: NextFunction) {
+    try {
+      const parsed = MagicRequestDTO.safeParse(req.body);
+      if (!parsed.success) throw new HttpError(400, 'A valid email is required.');
+      const { devLink } = await passwordlessService.request(req, parsed.data.email);
+      res.status(200).json({
+        success: true,
+        message: 'If that email is registered, a sign-in link has been sent.',
+        ...(devLink ? { devLink } : {}), // dev convenience only; omitted in prod
+      });
+    } catch (err) {
+      next(err);
+    }
+  }
+
+  /** Step 2: consume the token and establish a session (MFA still applies). */
+  async magicVerify(req: Request, res: Response, next: NextFunction) {
+    try {
+      const parsed = MagicVerifyDTO.safeParse(req.body);
+      if (!parsed.success) throw new HttpError(400, 'Invalid token.');
+      const user = await passwordlessService.verify(req, parsed.data.token);
+
+      if (user.mfaEnabled) {
+        return res.status(200).json({
+          success: true,
+          mfaRequired: true,
+          mfaToken: signMfaChallenge(user._id.toString()),
+          message: 'Enter the code from your authenticator app.',
+        });
+      }
+
       setAuthCookie(req, res, user);
       issueCsrfToken(req, res);
       res.status(200).json({ success: true, message: 'Login successful', user });

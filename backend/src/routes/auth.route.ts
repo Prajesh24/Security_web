@@ -18,6 +18,9 @@ router.post('/login', authLimiter, requireCaptcha, authController.login);
 // Second-factor verification is also rate limited — this is what stops a
 // 6-digit TOTP code from being brute forced.
 router.post('/mfa/verify-login', authLimiter, authController.verifyMfaLogin);
+// Passwordless (magic-link) login — rate limited like other credential routes.
+router.post('/magic/request', authLimiter, authController.magicRequest);
+router.post('/magic/verify', authLimiter, authController.magicVerify);
 router.post('/logout', authController.logout);
 router.get('/csrf', authController.csrf);
 

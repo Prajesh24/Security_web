@@ -15,6 +15,11 @@ export class UserRepository {
     return UserModel.findById(id).exec();
   }
 
+  // Look up by the stored single-use magic-token hash (passwordless login).
+  findByMagicTokenHash(tokenHash: string): Promise<IUser | null> {
+    return UserModel.findOne({ magicTokenHash: tokenHash }).exec();
+  }
+
   updateById(id: string, data: Partial<IUser>): Promise<IUser | null> {
     return UserModel.findByIdAndUpdate(id, data, { new: true }).exec();
   }

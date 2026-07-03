@@ -37,6 +37,9 @@ export interface IUser extends Document {
   // (for reuse prevention). History never contains plaintext.
   passwordChangedAt: Date;
   passwordHistory: string[];
+  // Passwordless (magic-link) login: a single-use token hash + its expiry.
+  magicTokenHash: string | null;
+  magicTokenExpires: Date | null;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -77,6 +80,8 @@ const userSchema = new Schema<IUser>(
     mfaPendingSecret: { type: String, default: null },
     passwordChangedAt: { type: Date, default: Date.now },
     passwordHistory: { type: [String], default: [] },
+    magicTokenHash: { type: String, default: null },
+    magicTokenExpires: { type: Date, default: null },
   },
   { timestamps: true },
 );
@@ -90,6 +95,8 @@ userSchema.set('toJSON', {
     delete ret.mfaSecret;
     delete ret.mfaPendingSecret;
     delete ret.passwordHistory;
+    delete ret.magicTokenHash;
+    delete ret.magicTokenExpires;
     delete ret.__v;
     // Expose only whether MFA is on, never the secret material.
     return ret;

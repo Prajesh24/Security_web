@@ -25,6 +25,20 @@ export default function LoginPage() {
   const [mfaToken, setMfaToken] = useState<string | null>(null);
   const [code, setCode] = useState('');
 
+  // Passwordless (magic-link) state.
+  const [magicMode, setMagicMode] = useState(false);
+  const [magicMsg, setMagicMsg] = useState('');
+
+  async function requestMagic(e: React.FormEvent) {
+    e.preventDefault();
+    setMagicMsg('');
+    const res = await apiPost('/api/auth/magic/request', { email });
+    // Generic message regardless of whether the email exists (no enumeration).
+    setMagicMsg(res.data?.message || 'Check your email for a sign-in link.');
+    // Dev convenience: the API returns a link in non-production so it is testable.
+    if (res.data?.devLink) setMagicMsg(`Dev link: ${res.data.devLink}`);
+  }
+
   function redirect() {
     const next = new URLSearchParams(window.location.search).get('next') || '/';
     router.push(next);
@@ -123,6 +137,28 @@ export default function LoginPage() {
             {loading ? 'Signing in…' : 'Sign In'}
           </button>
         </form>
+        <div style={{ marginTop: 16, borderTop: '1px solid #e5e7eb', paddingTop: 12 }}>
+          {!magicMode ? (
+            <button type="button" className="btn-outline btn-sm" onClick={() => setMagicMode(true)}>
+              Email me a sign-in link (passwordless)
+            </button>
+          ) : (
+            <form onSubmit={requestMagic}>
+              <label htmlFor="magic-email">Send a one-time sign-in link to</label>
+              <input
+                id="magic-email"
+                type="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                placeholder="you@example.com"
+                required
+              />
+              <button className="btn-outline btn-sm" type="submit">Send link</button>
+            </form>
+          )}
+          {magicMsg && <div className="alert alert-success" style={{ wordBreak: 'break-all' }}>{magicMsg}</div>}
+        </div>
+
         <p className="muted" style={{ marginTop: 16 }}>
           New here? <a href="/register">Create an account</a>
         </p>

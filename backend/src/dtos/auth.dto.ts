@@ -53,3 +53,13 @@ export type MfaLoginDTO = z.infer<typeof MfaLoginDTO>;
 
 export const MfaCodeDTO = z.object({ code: totpCode });
 export type MfaCodeDTO = z.infer<typeof MfaCodeDTO>;
+
+export const MagicRequestDTO = z.object({
+  email: z.string().email('Invalid email address').toLowerCase().trim(),
+});
+export type MagicRequestDTO = z.infer<typeof MagicRequestDTO>;
+
+export const MagicVerifyDTO = z.object({
+  token: z.string().regex(/^[a-f0-9]{64}$/, 'Invalid token'),
+});
+export type MagicVerifyDTO = z.infer<typeof MagicVerifyDTO>;
