@@ -1,9 +1,26 @@
+import crypto from 'crypto';
 import jwt, { SignOptions } from 'jsonwebtoken';
 import { JWT_SECRET, JWT_EXPIRES_IN } from '../config';
 
 export interface JwtPayload {
   id: string;
   role: 'customer' | 'admin';
+  // Optional session-binding fingerprint (a hash of the User-Agent). When
+  // present it ties the token to the browser that logged in, so a token
+  // replayed from a different client is rejected.
+  uab?: string;
+}
+
+/**
+ * Derive a short, non-reversible fingerprint of the client's User-Agent. This
+ * is a binding value, not a secret — it just has to change when the client does.
+ */
+export function fingerprintUserAgent(userAgent: string | undefined): string {
+  return crypto
+    .createHash('sha256')
+    .update(userAgent || 'unknown')
+    .digest('hex')
+    .slice(0, 32);
 }
 
 /** Sign a short-lived JWT. Short expiry limits the window of a stolen token. */

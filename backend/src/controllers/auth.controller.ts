@@ -4,7 +4,12 @@ import { authService, isPasswordExpired } from '../services/auth.service';
 import { mfaService } from '../services/mfa.service';
 import { auditService } from '../services/audit.service';
 import { RegisterDTO, LoginDTO, MfaLoginDTO } from '../dtos/auth.dto';
-import { signToken, signMfaChallenge, verifyMfaChallenge } from '../utils/jwt';
+import {
+  signToken,
+  signMfaChallenge,
+  verifyMfaChallenge,
+  fingerprintUserAgent,
+} from '../utils/jwt';
 import { issueCsrfToken } from '../middleware/csrf.middleware';
 import { generateCaptcha } from '../utils/captcha';
 import { HttpError } from '../errors/http-error';
@@ -17,8 +22,12 @@ const TOKEN_COOKIE = 'token';
 
 // httpOnly: JS can't read it (XSS-resistant). secure: HTTPS-only in prod.
 // sameSite=strict: the cookie is not sent on cross-site requests (CSRF defense).
-function setAuthCookie(res: Response, user: IUser): void {
-  const token = signToken({ id: user._id.toString(), role: user.role });
+function setAuthCookie(req: Request, res: Response, user: IUser): void {
+  const token = signToken({
+    id: user._id.toString(),
+    role: user.role,
+    uab: fingerprintUserAgent(req.headers['user-agent'] as string | undefined),
+  });
   res.cookie(TOKEN_COOKIE, token, {
     httpOnly: true,
     secure: IS_PROD,
@@ -36,7 +45,7 @@ export class AuthController {
         throw new HttpError(400, parsed.error.issues[0]?.message ?? 'Invalid input.');
       }
       const user = await authService.register(req, parsed.data);
-      setAuthCookie(res, user);
+      setAuthCookie(req, res, user);
       issueCsrfToken(req, res);
       res.status(201).json({ success: true, message: 'Account created', user });
     } catch (err) {
@@ -71,7 +80,7 @@ export class AuthController {
         });
       }
 
-      setAuthCookie(res, user);
+      setAuthCookie(req, res, user);
       issueCsrfToken(req, res);
       res.status(200).json({
         success: true,
@@ -119,7 +128,7 @@ export class AuthController {
         userId: user._id.toString(),
         success: true,
       });
-      setAuthCookie(res, user);
+      setAuthCookie(req, res, user);
       issueCsrfToken(req, res);
       res.status(200).json({ success: true, message: 'Login successful', user });
     } catch (err) {

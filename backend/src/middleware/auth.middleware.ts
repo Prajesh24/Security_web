@@ -1,5 +1,5 @@
 import { Request, Response, NextFunction } from 'express';
-import { verifyToken } from '../utils/jwt';
+import { verifyToken, fingerprintUserAgent } from '../utils/jwt';
 import { HttpError } from '../errors/http-error';
 
 /**
@@ -19,7 +19,19 @@ export function authMiddleware(
     if (!token) {
       throw new HttpError(401, 'Authentication required.');
     }
-    req.user = verifyToken(token);
+    const payload = verifyToken(token);
+
+    // Session binding: if the token was issued with a User-Agent fingerprint,
+    // it must still match the current request's UA. A token lifted and replayed
+    // from a different client/device fails this check.
+    if (payload.uab) {
+      const current = fingerprintUserAgent(req.headers['user-agent'] as string | undefined);
+      if (current !== payload.uab) {
+        throw new HttpError(401, 'Session is no longer valid. Please sign in again.');
+      }
+    }
+
+    req.user = payload;
     next();
   } catch (err) {
     if (err instanceof HttpError) {
