@@ -1,3 +1,24 @@
+/* ── Accessibility helpers ─────────────────────────────────────────────────
+   Skip link is off-screen until focused; a visible focus ring aids keyboard
+   navigation (WCAG 2.4.1 Bypass Blocks, 2.4.7 Focus Visible). */
+.skip-link {
+  position: absolute;
+  left: -9999px;
+  top: 0;
+  z-index: 1000;
+  background: #4f46e5;
+  color: #fff;
+  padding: 10px 16px;
+  border-radius: 0 0 8px 0;
+}
+.skip-link:focus {
+  left: 0;
+}
+:focus-visible {
+  outline: 3px solid #4f46e5;
+  outline-offset: 2px;
+}
+
 :root {
   --bg: #f6f7fb;
   --surface: #ffffff;

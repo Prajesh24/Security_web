@@ -21,7 +21,7 @@ export default function NavBar() {
   }, []);
 
   return (
-    <nav className="navbar">
+    <nav className="navbar" aria-label="Primary">
       <a href="/" className="brand">
         <span className="logo">🛒</span> GadgetHub
       </a>
@@ -29,9 +29,17 @@ export default function NavBar() {
         <a href="/">Shop</a>
         <a href="/orders">My Orders</a>
         <a href="/account">Account</a>
-        <a href="/cart" className="cart-link">
+        <a
+          href="/cart"
+          className="cart-link"
+          aria-label={count > 0 ? `Cart, ${count} item${count === 1 ? '' : 's'}` : 'Cart'}
+        >
           Cart
-          {count > 0 && <span className="cart-badge">{count}</span>}
+          {count > 0 && (
+            <span className="cart-badge" aria-hidden="true">
+              {count}
+            </span>
+          )}
         </a>
         <a href="/login" className="nav-cta">
           Sign In

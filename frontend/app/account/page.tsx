@@ -60,7 +60,7 @@ export default function AccountPage() {
         Signed in as {me.email} ({me.role})
       </p>
       {msg && <div className="alert alert-success">{msg}</div>}
-      {err && <div className="alert alert-error">{err}</div>}
+      {err && <div className="alert alert-error" role="alert">{err}</div>}
 
       <ProfileCard me={me} onSaved={(t) => { flash(setMsg, t); refresh(); }} onError={(t) => flash(setErr, t)} />
       <MfaCard me={me} onChanged={(t) => { flash(setMsg, t); refresh(); }} onError={(t) => flash(setErr, t)} />

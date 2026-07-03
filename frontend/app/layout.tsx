@@ -22,8 +22,10 @@ export default function RootLayout({
   return (
     <html lang="en" className={inter.variable}>
       <body>
+        {/* Keyboard users can jump straight past the nav to the content. */}
+        <a href="#main-content" className="skip-link">Skip to main content</a>
         <NavBar />
-        {children}
+        <main id="main-content">{children}</main>
       </body>
     </html>
   );

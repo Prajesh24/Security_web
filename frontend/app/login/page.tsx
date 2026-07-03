@@ -99,7 +99,7 @@ export default function LoginPage() {
               autoFocus
               required
             />
-            {error && <div className="alert alert-error">{error}</div>}
+            {error && <div className="alert alert-error" role="alert">{error}</div>}
             <button className="btn-primary" type="submit" disabled={loading}>
               {loading ? 'Verifying…' : 'Verify'}
             </button>
@@ -132,7 +132,7 @@ export default function LoginPage() {
             required
           />
           <Captcha onChange={onCaptcha} reloadSignal={captchaReload} />
-          {error && <div className="alert alert-error">{error}</div>}
+          {error && <div className="alert alert-error" role="alert">{error}</div>}
           <button className="btn-primary" type="submit" disabled={loading}>
             {loading ? 'Signing in…' : 'Sign In'}
           </button>
