@@ -42,6 +42,11 @@ function parseIpList(raw: string | undefined): string[] {
 export const IP_ALLOWLIST: string[] = parseIpList(process.env.IP_ALLOWLIST);
 export const IP_BLOCKLIST: string[] = parseIpList(process.env.IP_BLOCKLIST);
 
+// Test-only escape hatch so the automated suite isn't throttled by the
+// in-memory rate limiters. Never enable this in production.
+export const RATE_LIMIT_DISABLED: boolean =
+  process.env.RATE_LIMIT_DISABLED === 'true' && !IS_PROD;
+
 // Fail fast in production if the JWT secret was left at its default.
 if (IS_PROD && JWT_SECRET.startsWith('change_me')) {
   throw new Error('JWT_SECRET must be set to a strong random value in production.');

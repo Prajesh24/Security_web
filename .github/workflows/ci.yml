@@ -56,6 +56,45 @@ jobs:
       - name: Fail on critical advisories
         run: npm audit --audit-level=critical
 
+  # ── Integration security tests ──────────────────────────────────────────────
+  integration-tests:
+    runs-on: ubuntu-latest
+    services:
+      mongodb:
+        image: mongo:7
+        ports:
+          - 27017:27017
+    defaults:
+      run:
+        working-directory: backend
+    env:
+      MONGODB_URI: mongodb://localhost:27017/gadgethub_test
+      JWT_SECRET: ci_test_secret_not_for_production
+      ENCRYPTION_KEY: ci_test_encryption_key_not_for_prod
+      RATE_LIMIT_DISABLED: 'true'
+      NODE_ENV: development
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: npm
+          cache-dependency-path: backend/package-lock.json
+      - run: npm ci
+      - run: npm run build
+      - name: Seed database
+        run: node dist/seed.js
+      - name: Start API
+        run: |
+          node dist/index.js &
+          for i in $(seq 1 20); do
+            curl -sf http://localhost:6060/api/health && break || sleep 1;
+          done
+      - name: Run security test suite
+        run: npm test
+      - name: Run fuzzer
+        run: npm run fuzz
+
   # ── Secret scanning ─────────────────────────────────────────────────────────
   secret-scan:
     runs-on: ubuntu-latest

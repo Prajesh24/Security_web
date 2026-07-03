@@ -10,7 +10,8 @@
     "start": "node dist/index.js",
     "build": "tsc",
     "seed": "ts-node src/seed.ts",
-    "fuzz": "node scripts/fuzz.mjs"
+    "fuzz": "node scripts/fuzz.mjs",
+    "test": "node --test \"tests/**/*.test.mjs\""
   },
   "dependencies": {
     "bcryptjs": "^2.4.3",

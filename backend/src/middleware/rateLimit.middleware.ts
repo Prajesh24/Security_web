@@ -1,16 +1,25 @@
+import { RequestHandler } from 'express';
 import rateLimit from 'express-rate-limit';
+import { RATE_LIMIT_DISABLED } from '../config';
+
+// In the test environment the limiters are replaced with a passthrough so the
+// suite can make many auth calls without being throttled (see RATE_LIMIT_DISABLED).
+// This is gated to non-production only.
+const passthrough: RequestHandler = (_req, _res, next) => next();
 
 /**
  * Global rate limiter — caps total requests per IP to blunt scraping and
  * denial-of-service attempts.
  */
-export const globalLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 300,
-  standardHeaders: true,
-  legacyHeaders: false,
-  message: { success: false, message: 'Too many requests. Please slow down.' },
-});
+export const globalLimiter: RequestHandler = RATE_LIMIT_DISABLED
+  ? passthrough
+  : rateLimit({
+      windowMs: 15 * 60 * 1000, // 15 minutes
+      max: 300,
+      standardHeaders: true,
+      legacyHeaders: false,
+      message: { success: false, message: 'Too many requests. Please slow down.' },
+    });
 
 /**
  * Strict limiter for auth endpoints (login/register). This is the front line
@@ -18,13 +27,15 @@ export const globalLimiter = rateLimit({
  * attempts per IP per window are allowed, independent of the per-account
  * lockout enforced in the auth service.
  */
-export const authLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000,
-  max: 10,
-  standardHeaders: true,
-  legacyHeaders: false,
-  message: {
-    success: false,
-    message: 'Too many attempts from this network. Try again later.',
-  },
-});
+export const authLimiter: RequestHandler = RATE_LIMIT_DISABLED
+  ? passthrough
+  : rateLimit({
+      windowMs: 15 * 60 * 1000,
+      max: 10,
+      standardHeaders: true,
+      legacyHeaders: false,
+      message: {
+        success: false,
+        message: 'Too many attempts from this network. Try again later.',
+      },
+    });
