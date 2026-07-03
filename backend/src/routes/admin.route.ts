@@ -12,5 +12,6 @@ router.use(requireRole('admin'));
 router.get('/audit-logs', adminController.auditLogs);
 router.get('/users', adminController.users);
 router.get('/orders', adminController.orders);
+router.get('/alerts', adminController.alerts);
 
 export default router;

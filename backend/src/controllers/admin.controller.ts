@@ -1,5 +1,6 @@
 import { Request, Response, NextFunction } from 'express';
 import { auditService } from '../services/audit.service';
+import { monitoringService } from '../services/monitoring.service';
 import { UserRepository } from '../repositories/user.repository';
 import { OrderRepository } from '../repositories/order.repository';
 
@@ -30,6 +31,15 @@ export class AdminController {
     try {
       const orders = await orderRepository.findAll();
       res.status(200).json({ success: true, orders });
+    } catch (err) {
+      next(err);
+    }
+  }
+
+  /** Real-time security alerts raised by the anomaly monitor. */
+  async alerts(_req: Request, res: Response, next: NextFunction) {
+    try {
+      res.status(200).json({ success: true, alerts: monitoringService.recentAlerts() });
     } catch (err) {
       next(err);
     }
