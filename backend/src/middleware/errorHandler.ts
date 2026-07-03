@@ -18,6 +18,24 @@ export function errorHandler(
     return;
   }
 
+  // Errors thrown by body-parser and similar middleware carry their own HTTP
+  // status (e.g. 413 payload-too-large, 400 malformed JSON). Honour a 4xx
+  // client-error status with a clean, generic message instead of masking a
+  // client mistake as a 500 server error.
+  const status = (err as { status?: number; statusCode?: number })?.status
+    ?? (err as { statusCode?: number })?.statusCode;
+  if (typeof status === 'number' && status >= 400 && status < 500) {
+    const type = (err as { type?: string })?.type;
+    const message =
+      type === 'entity.too.large'
+        ? 'Request payload too large.'
+        : status === 400
+          ? 'Malformed request.'
+          : 'Request rejected.';
+    res.status(status).json({ success: false, message });
+    return;
+  }
+
   console.error('Unhandled error:', err);
   res.status(500).json({ success: false, message: 'Something went wrong.' });
 }

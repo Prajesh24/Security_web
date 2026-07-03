@@ -9,7 +9,8 @@
     "dev": "npx nodemon --exec ts-node src/index.ts",
     "start": "node dist/index.js",
     "build": "tsc",
-    "seed": "ts-node src/seed.ts"
+    "seed": "ts-node src/seed.ts",
+    "fuzz": "node scripts/fuzz.mjs"
   },
   "dependencies": {
     "bcryptjs": "^2.4.3",
