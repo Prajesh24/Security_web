@@ -2,6 +2,7 @@ import type { Metadata } from 'next';
 import { Inter } from 'next/font/google';
 import './globals.css';
 import NavBar from '../components/NavBar';
+import { AuthProvider } from '../lib/auth';
 
 const inter = Inter({
   subsets: ['latin'],
@@ -24,8 +25,10 @@ export default function RootLayout({
       <body>
         {/* Keyboard users can jump straight past the nav to the content. */}
         <a href="#main-content" className="skip-link">Skip to main content</a>
-        <NavBar />
-        <main id="main-content">{children}</main>
+        <AuthProvider>
+          <NavBar />
+          <main id="main-content">{children}</main>
+        </AuthProvider>
       </body>
     </html>
   );

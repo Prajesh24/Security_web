@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { apiPost } from '../../lib/api';
+import { useAuth } from '../../lib/auth';
 import {
   CartLine,
   getCart,
@@ -13,12 +14,28 @@ import {
 
 export default function CartPage() {
   const router = useRouter();
+  const { user, loading: authLoading } = useAuth();
   const [lines, setLines] = useState<CartLine[]>([]);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
   const [loading, setLoading] = useState(false);
 
   useEffect(() => setLines(getCart()), []);
+
+  // The cart is a protected area — bounce anonymous visitors to sign in.
+  useEffect(() => {
+    if (!authLoading && !user) {
+      router.replace('/login?next=/cart');
+    }
+  }, [authLoading, user, router]);
+
+  if (authLoading || !user) {
+    return (
+      <div className="container">
+        <div className="card">Loading…</div>
+      </div>
+    );
+  }
 
   const total = lines.reduce((s, l) => s + l.price * l.quantity, 0);
 
