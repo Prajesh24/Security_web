@@ -19,13 +19,15 @@ import {
 } from '../utils/jwt';
 import { issueCsrfToken } from '../middleware/csrf.middleware';
 import { generateCaptcha } from '../utils/captcha';
+import { oauthService } from '../services/oauth.service';
 import { HttpError } from '../errors/http-error';
-import { IS_PROD } from '../config';
+import { IS_PROD, CLIENT_URL, OAUTH_GOOGLE_ENABLED } from '../config';
 import { IUser } from '../models/user.model';
 import { UserRepository } from '../repositories/user.repository';
 
 const userRepository = new UserRepository();
 const TOKEN_COOKIE = 'token';
+const OAUTH_STATE_COOKIE = 'oauth_state';
 
 // httpOnly: JS can't read it (XSS-resistant). secure: HTTPS-only in prod.
 // sameSite=strict: the cookie is not sent on cross-site requests (CSRF defense).
@@ -40,7 +42,7 @@ function setAuthCookie(req: Request, res: Response, user: IUser): void {
     secure: IS_PROD,
     sameSite: 'strict',
     path: '/',
-    maxAge: 15 * 60 * 1000, // matches JWT_EXPIRES_IN
+    maxAge: 15 * 24 * 60 * 60 * 1000, // 15 days — matches JWT_EXPIRES_IN (CW2 baseline)
   });
 }
 
@@ -200,6 +202,59 @@ export class AuthController {
   async captcha(_req: Request, res: Response) {
     const { captchaToken, svg } = generateCaptcha();
     res.status(200).json({ success: true, captchaToken, svg });
+  }
+
+  // ── OAuth 2.0 (Google) ─────────────────────────────────────────────────────
+  /** Lets the SPA know which federated providers are configured. */
+  async providers(_req: Request, res: Response) {
+    res.status(200).json({ success: true, providers: { google: OAUTH_GOOGLE_ENABLED } });
+  }
+
+  /** Step 1: redirect the browser to Google's consent screen. */
+  async oauthGoogleStart(req: Request, res: Response) {
+    if (!OAUTH_GOOGLE_ENABLED) {
+      return res.redirect(`${CLIENT_URL}/login?error=oauth_unavailable`);
+    }
+    // Anti-CSRF for the OAuth flow: a random state echoed back on the callback,
+    // bound to the browser via an httpOnly cookie. SameSite=lax so it survives
+    // the top-level redirect back from Google.
+    const state = oauthService.createState();
+    res.cookie(OAUTH_STATE_COOKIE, state, {
+      httpOnly: true,
+      secure: IS_PROD,
+      sameSite: 'lax',
+      path: '/api/auth/oauth',
+      maxAge: 10 * 60 * 1000,
+    });
+    res.redirect(oauthService.buildGoogleAuthUrl(state));
+  }
+
+  /** Step 2: Google redirects back here with a one-time code. */
+  async oauthGoogleCallback(req: Request, res: Response) {
+    try {
+      const { code, state } = req.query as { code?: string; state?: string };
+      const cookieState = req.cookies?.[OAUTH_STATE_COOKIE];
+      res.clearCookie(OAUTH_STATE_COOKIE, { path: '/api/auth/oauth' });
+
+      if (!code || !state || !cookieState || state !== cookieState) {
+        // Missing/mismatched state ⇒ possible CSRF or a tampered callback.
+        return res.redirect(`${CLIENT_URL}/login?error=oauth`);
+      }
+
+      const user = await oauthService.loginWithGoogle(code);
+      setAuthCookie(req, res, user);
+      issueCsrfToken(req, res);
+      await auditService.log(req, {
+        event: 'LOGIN',
+        email: user.email,
+        userId: user._id.toString(),
+        success: true,
+        detail: 'google oauth',
+      });
+      return res.redirect(`${CLIENT_URL}/account`);
+    } catch {
+      return res.redirect(`${CLIENT_URL}/login?error=oauth`);
+    }
   }
 }
 

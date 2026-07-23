@@ -20,8 +20,11 @@ export interface IUser extends Document {
   _id: mongoose.Types.ObjectId;
   fullName: string;
   email: string;
-  password: string; // bcrypt hash — never plaintext
+  password?: string; // bcrypt hash — never plaintext; absent for OAuth accounts
   role: 'customer' | 'admin';
+  // Federated identity (OAuth 2.0). 'local' = password/magic-link account.
+  authProvider: 'local' | 'google';
+  oauthId: string | null; // provider subject id (e.g. Google `sub`)
   // User-editable, non-privileged personalisation data.
   profile: IUserProfile;
   // Brute-force protection / account lockout state:
@@ -55,8 +58,16 @@ const userSchema = new Schema<IUser>(
       trim: true,
       index: true,
     },
-    password: { type: String, required: true },
+    // Local accounts must have a password hash; OAuth accounts never do.
+    password: {
+      type: String,
+      required: function (this: IUser) {
+        return this.authProvider === 'local';
+      },
+    },
     role: { type: String, enum: ['customer', 'admin'], default: 'customer' },
+    authProvider: { type: String, enum: ['local', 'google'], default: 'local' },
+    oauthId: { type: String, default: null, index: true },
     profile: {
       displayName: { type: String, default: '', trim: true },
       bio: { type: String, default: '', trim: true },
@@ -97,6 +108,7 @@ userSchema.set('toJSON', {
     delete ret.passwordHistory;
     delete ret.magicTokenHash;
     delete ret.magicTokenExpires;
+    delete ret.oauthId;
     delete ret.__v;
     // Expose only whether MFA is on, never the secret material.
     return ret;

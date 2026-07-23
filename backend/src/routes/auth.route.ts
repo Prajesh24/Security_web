@@ -24,6 +24,15 @@ router.post('/magic/verify', authLimiter, authController.magicVerify);
 router.post('/logout', authController.logout);
 router.get('/csrf', authController.csrf);
 
+// ── OAuth 2.0 (Google) ───────────────────────────────────────────────────────
+// Which providers are configured (SPA uses this to decide whether to show the
+// "Continue with Google" button).
+router.get('/providers', authController.providers);
+// Start the flow (rate limited like other credential entry points) and the
+// callback Google redirects back to.
+router.get('/oauth/google', authLimiter, authController.oauthGoogleStart);
+router.get('/oauth/google/callback', authController.oauthGoogleCallback);
+
 // ── MFA management (authenticated + CSRF-protected) ──────────────────────────
 router.post('/mfa/setup', authMiddleware, csrfProtection, mfaController.setup);
 router.post('/mfa/enable', authMiddleware, csrfProtection, mfaController.enable);

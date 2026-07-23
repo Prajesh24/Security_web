@@ -89,6 +89,19 @@ export class AuthService {
       );
     }
 
+    // OAuth-only accounts have no password hash — never allow password login
+    // against them (and never call bcrypt with an undefined hash).
+    if (!user.password) {
+      await auditService.log(req, {
+        event: 'LOGIN',
+        email: user.email,
+        userId: user._id.toString(),
+        success: false,
+        detail: 'password login attempted on federated account',
+      });
+      throw new HttpError(401, GENERIC_LOGIN_ERROR);
+    }
+
     const ok = await verifyPassword(dto.password, user.password);
     if (!ok) {
       const attempts = user.failedLoginAttempts + 1;
@@ -135,6 +148,10 @@ export class AuthService {
   async changePassword(req: Request, userId: string, dto: ChangePasswordDTO): Promise<void> {
     const user = await userRepository.findById(userId);
     if (!user) throw new HttpError(404, 'User not found.');
+    if (!user.password) {
+      // Federated (OAuth) account — there is no local password to change.
+      throw new HttpError(400, 'Password changes are not available for this account.');
+    }
 
     if (!(await verifyPassword(dto.currentPassword, user.password))) {
       await auditService.log(req, {

@@ -1,9 +1,11 @@
 'use client';
 
-import { useCallback, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { apiPost } from '../../lib/api';
+import { apiGet, apiPost } from '../../lib/api';
 import Captcha from '../../components/Captcha';
+
+const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:6060';
 
 export default function LoginPage() {
   const router = useRouter();
@@ -11,6 +13,18 @@ export default function LoginPage() {
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+
+  // Federated login (OAuth 2.0). Only show the button if the server has it
+  // configured, and surface any error the callback redirected back with.
+  const [googleEnabled, setGoogleEnabled] = useState(false);
+  useEffect(() => {
+    apiGet('/api/auth/providers').then((res) => {
+      setGoogleEnabled(!!res.data?.providers?.google);
+    });
+    const err = new URLSearchParams(window.location.search).get('error');
+    if (err === 'oauth') setError('Google sign-in failed. Please try again.');
+    else if (err === 'oauth_unavailable') setError('Google sign-in is not configured on this server.');
+  }, []);
 
   // CAPTCHA challenge state.
   const [captchaToken, setCaptchaToken] = useState('');
@@ -137,6 +151,16 @@ export default function LoginPage() {
             {loading ? 'Signing in…' : 'Sign In'}
           </button>
         </form>
+
+        {googleEnabled && (
+          <div style={{ marginTop: 16 }}>
+            {/* Full-page navigation to the backend, which redirects to Google. */}
+            <a className="btn-outline" style={{ display: 'block', textAlign: 'center' }} href={`${API_URL}/api/auth/oauth/google`}>
+              Continue with Google
+            </a>
+          </div>
+        )}
+
         <div style={{ marginTop: 16, borderTop: '1px solid #e5e7eb', paddingTop: 12 }}>
           {!magicMode ? (
             <button type="button" className="btn-outline btn-sm" onClick={() => setMagicMode(true)}>
