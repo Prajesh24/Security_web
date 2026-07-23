@@ -3,9 +3,11 @@ import helmet from 'helmet';
 import cors from 'cors';
 import cookieParser from 'cookie-parser';
 
-import { CLIENT_URL } from './config';
+import { CORS_ALLOWLIST } from './config';
 import { globalLimiter } from './middleware/rateLimit.middleware';
 import { ipAccessControl } from './middleware/ipAccess.middleware';
+import { requestLogger } from './middleware/requestLogger.middleware';
+import { waf } from './middleware/waf.middleware';
 import { sanitizeRequest } from './utils/sanitize';
 import { errorHandler, notFoundHandler } from './middleware/errorHandler';
 
@@ -24,6 +26,10 @@ app.set('trust proxy', 1);
 // ── Network access control ────────────────────────────────────────────────────
 // Deny-by-default allowlist + explicit blocklist, evaluated before anything else.
 app.use(ipAccessControl);
+
+// ── Access logging (gateway) ──────────────────────────────────────────────────
+// The gateway sees every request; log metadata here for abuse/perf visibility.
+app.use(requestLogger);
 
 // ── Security headers (Helmet) ─────────────────────────────────────────────────
 // Sets a strict Content-Security-Policy, HSTS, X-Content-Type-Options,
@@ -45,11 +51,20 @@ app.use(
 );
 
 // ── CORS allowlist ────────────────────────────────────────────────────────────
-// Only our known frontend origin may call the API, and credentials (cookies)
-// are only shared with it.
+// Only known frontend origins may call the API, and credentials (cookies) are
+// only shared with them. The reflected-origin function NEVER echoes an
+// arbitrary or "null" origin (sandboxed iframes / file://), which would let a
+// malicious page make credentialed cross-origin calls.
 app.use(
   cors({
-    origin: CLIENT_URL,
+    origin(origin, callback) {
+      // Same-origin / non-browser tools (curl, health checks) send no Origin.
+      if (!origin) return callback(null, true);
+      if (origin !== 'null' && CORS_ALLOWLIST.includes(origin)) {
+        return callback(null, true);
+      }
+      return callback(null, false); // reject: no CORS headers are sent back
+    },
     credentials: true,
     methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
     allowedHeaders: ['Content-Type', 'X-CSRF-Token'],
@@ -64,6 +79,7 @@ app.use(cookieParser());
 
 // ── Input hardening ─────────────────────────────────────────────────────────
 app.use(sanitizeRequest); // strips NoSQL-injection operators from the body
+app.use(waf); // app-layer WAF: blocks known attack signatures (defence in depth)
 app.use(globalLimiter); // global rate limiting
 
 // ── Routes ────────────────────────────────────────────────────────────────────
