@@ -12,10 +12,12 @@ export const MONGODB_URI: string =
 
 export const JWT_SECRET: string =
   process.env.JWT_SECRET || 'change_me_to_a_long_random_secret_in_production';
-export const JWT_EXPIRES_IN: string = process.env.JWT_EXPIRES_IN || '15m';
+// CW2 baseline: access token lifetime of at least 15 days.
+export const JWT_EXPIRES_IN: string = process.env.JWT_EXPIRES_IN || '15d';
 
+// CW2 baseline: lock out after 10–15 failed attempts (not too aggressive).
 export const MAX_LOGIN_ATTEMPTS: number = parseInt(
-  process.env.MAX_LOGIN_ATTEMPTS || '5',
+  process.env.MAX_LOGIN_ATTEMPTS || '10',
   10,
 );
 export const LOCK_MINUTES: number = parseInt(process.env.LOCK_MINUTES || '15', 10);
@@ -41,6 +43,33 @@ function parseIpList(raw: string | undefined): string[] {
 }
 export const IP_ALLOWLIST: string[] = parseIpList(process.env.IP_ALLOWLIST);
 export const IP_BLOCKLIST: string[] = parseIpList(process.env.IP_BLOCKLIST);
+
+// Browser origins permitted to call the API with credentials. Defaults to the
+// configured frontend. The literal string "null" origin (file://, sandboxed
+// iframes) is NEVER accepted — see the CORS setup in app.ts.
+export const CORS_ALLOWLIST: string[] = (() => {
+  const extra = parseIpList(process.env.CORS_ALLOWLIST);
+  return Array.from(new Set([CLIENT_URL, ...extra]));
+})();
+
+// Hosts the server is allowed to make outbound HTTP(S) requests to. Used by the
+// SSRF-safe fetch helper (utils/safeFetch.ts). Empty = deny all outbound calls.
+export const OUTBOUND_HOST_ALLOWLIST: string[] = parseIpList(
+  process.env.OUTBOUND_HOST_ALLOWLIST,
+);
+
+// ── OAuth 2.0 (Google, Authorization Code flow) ───────────────────────────────
+// Configure these from the Google Cloud Console. When both client id and secret
+// are present the "Continue with Google" flow is enabled; otherwise it is off
+// and the rest of the app is unaffected.
+export const GOOGLE_CLIENT_ID: string = process.env.GOOGLE_CLIENT_ID || '';
+export const GOOGLE_CLIENT_SECRET: string = process.env.GOOGLE_CLIENT_SECRET || '';
+export const GOOGLE_REDIRECT_URI: string =
+  process.env.GOOGLE_REDIRECT_URI ||
+  'http://localhost:6060/api/auth/oauth/google/callback';
+export const OAUTH_GOOGLE_ENABLED: boolean = Boolean(
+  GOOGLE_CLIENT_ID && GOOGLE_CLIENT_SECRET,
+);
 
 // Test-only escape hatch so the automated suite isn't throttled by the
 // in-memory rate limiters. Never enable this in production.
