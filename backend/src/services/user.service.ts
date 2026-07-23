@@ -3,6 +3,7 @@ import { OrderRepository } from '../repositories/order.repository';
 import { UpdateProfileDTO, ProfileImportDTO } from '../dtos/profile.dto';
 import { IUser } from '../models/user.model';
 import { HttpError } from '../errors/http-error';
+import { encryptProfilePatch } from '../utils/pii';
 
 const userRepository = new UserRepository();
 const orderRepository = new OrderRepository();
@@ -39,6 +40,9 @@ export class UserService {
     if (Object.keys(set).length === 0) {
       throw new HttpError(400, 'No profile fields to update.');
     }
+
+    // Encrypt PII (phone, address) at rest before it reaches the database.
+    encryptProfilePatch(set);
 
     const updated = await userRepository.updateFields(id, set);
     if (!updated) throw new HttpError(404, 'User not found.');

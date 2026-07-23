@@ -16,6 +16,7 @@ import { ProductModel } from './models/product.model';
 import { OrderModel } from './models/order.model';
 import { AuditLogModel } from './models/auditLog.model';
 import { hashPassword } from './utils/password';
+import { encrypt } from './utils/crypto';
 
 const products = [
   { name: 'Aurora Wireless Earbuds', description: 'ANC true-wireless earbuds with 30h battery.', price: 5200, category: 'Audio', stock: 40, imageUrl: '' },
@@ -48,6 +49,22 @@ async function seed() {
       email: p.email,
       password: await hashPassword(p.password),
       role: p.role,
+      authProvider: 'local',
+      // Demonstrate PII-at-rest encryption: the shopper's phone + address are
+      // stored AES-256-GCM encrypted (verify with a raw find() in mongosh).
+      ...(p.role === 'customer'
+        ? {
+            profile: {
+              phone: encrypt('+9779812345678'),
+              address: {
+                line1: encrypt('12 Durbar Marg'),
+                city: encrypt('Kathmandu'),
+                postcode: encrypt('44600'),
+                country: encrypt('Nepal'),
+              },
+            },
+          }
+        : {}),
     });
     console.log(`✅ ${p.role}: ${p.email} / ${p.password}`);
   }
