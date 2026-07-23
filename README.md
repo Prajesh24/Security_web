@@ -43,8 +43,8 @@ security web/
 | 1 | **bcrypt password hashing** (salted, cost factor 12) | `utils/password.ts` | Credential theft if the DB leaks; rainbow tables |
 | 2 | **Strong password policy** (8+, upper/lower/digit/special) | `dtos/auth.dto.ts` | Weak/guessable passwords |
 | 3 | **JWT in httpOnly + SameSite=Strict + Secure cookie** | `controllers/auth.controller.ts` | Token theft via XSS; CSRF (SameSite) |
-| 4 | **Short token expiry (15 min)** | `config`, `utils/jwt.ts` | Limits damage from a stolen token |
-| 5 | **Per-account lockout** (5 fails → 15-min lock) | `services/auth.service.ts` | Online brute-force / password guessing |
+| 4 | **JWT access token (15-day lifetime, per CW2 baseline)** — theft risk contained by httpOnly + SameSite=Strict + Secure cookie | `config`, `utils/jwt.ts` | Session hijacking (defence is the cookie flags, not a short TTL) |
+| 5 | **Per-account lockout** (10 fails → 15-min lock) | `services/auth.service.ts` | Online brute-force / password guessing |
 | 6 | **Per-IP rate limiting** (global + strict auth limiter) | `middleware/rateLimit.middleware.ts` | Brute-force, credential stuffing, DoS |
 | 7 | **RBAC** (customer vs admin) — only admins manage products | `middleware/rbac.middleware.ts` | Broken access control / privilege escalation |
 | 8 | **CSRF protection** (double-submit cookie token) | `middleware/csrf.middleware.ts` | Cross-Site Request Forgery on checkout & admin actions |
@@ -68,9 +68,16 @@ security web/
 | 26 | **IP allow-list / block-list** | `middleware/ipAccess.middleware.ts` | Network-level abuse; locked deployments |
 | 27 | **Containerisation** (non-root multi-stage images) | `*/Dockerfile`, `docker-compose.yml` | Reproducible, least-privilege runtime |
 | 28 | **CI/CD security gates** (audit, CodeQL, Gitleaks) | `.github/workflows/` | Vulnerable deps, secrets, insecure code |
+| 29 | **Application-layer WAF** (attack-signature filter) | `middleware/waf.middleware.ts` | XSS, SQLi/NoSQLi, path traversal, SSTI, command injection, scanners |
+| 30 | **SSRF-safe outbound fetch** (host allowlist + private-IP guard) | `utils/safeFetch.ts` | Server-Side Request Forgery, DNS rebinding |
+| 31 | **OAuth 2.0 federated login** (Google, auth-code + `state`) | `services/oauth.service.ts` | Password reuse; delegates auth to a hardened IdP |
+| 32 | **PII field encryption at rest** (AES-256-GCM: phone, address) | `utils/pii.ts` | Confidentiality of personal data if the DB leaks |
+| 33 | **Gateway access logging** (metadata only, no PII) | `middleware/requestLogger.middleware.ts` | Blind spots: abuse, intrusion, performance |
+| 34 | **Strict CORS** (allowlist function; `"null"` origin rejected) | `app.ts` | Credentialed cross-origin abuse from sandboxed pages |
 
-See also **[SECURITY.md](SECURITY.md)** (risk register) and **[docs/](docs/)**
-(pentest report, report outline, references).
+See also **[SECURITY.md](SECURITY.md)**, **[docs/SECURITY-CONCEPTS.md](docs/SECURITY-CONCEPTS.md)**
+(CIA triad, Laws of Nepal, CVSS, WAF/methodology write-ups for the report & viva),
+and the rest of **[docs/](docs/)** (pentest report, report outline, references).
 
 ---
 
@@ -132,7 +139,7 @@ docker compose exec backend node dist/seed.js   # seed demo data
 2. **httpOnly JWT** — after login, dev-tools → Application → Cookies: the
    `token` cookie shows `HttpOnly ✓`, `SameSite=Strict`. JS `document.cookie`
    cannot read it.
-3. **Account lockout** — 5 wrong passwords → account locked 15 min (`429`);
+3. **Account lockout** — 10 wrong passwords → account locked 15 min (`429`);
    the event appears in the admin audit log.
 4. **Rate limiting** — rapidly hit `/api/auth/login` → `429 Too many attempts`.
 5. **RBAC** — as a shopper, open `/admin` or `POST /api/products` → `403`.
