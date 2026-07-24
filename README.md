@@ -181,6 +181,24 @@ curl -b c.txt -X POST http://localhost:6060/api/orders/checkout \
 
 ---
 
+## 5b. Running the automated security tests
+
+The backend ships an integration test suite (Node's built-in runner, no extra
+deps) covering the WAF, CORS, security headers, OAuth, PII encryption, NoSQL
+injection, mass assignment, session binding, brute-force and payload limits.
+
+```bash
+cd "security web/backend"
+npm run seed                 # ensure demo data exists
+RATE_LIMIT_DISABLED=true npm run dev   # terminal 1
+npm run test:ci              # terminal 2 — runs the full suite
+npm run typecheck            # optional: strict TypeScript check
+```
+
+CI runs the same steps automatically (see `.github/workflows/`).
+
+---
+
 ## 6. Notes & limitations (be honest in your report)
 
 - This is an **educational demo**, not production e-commerce software.
