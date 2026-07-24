@@ -52,7 +52,7 @@ export class PasswordlessService {
 
     // Stand-in for an email send. Wire this to an email provider in production.
     // eslint-disable-next-line no-console
-    console.log(`✉️  Magic login link for ${user.email}: ${link}`);
+    console.log(`Magic login link for ${user.email}: ${link}`);
     return IS_PROD ? {} : { devLink: link };
   }
 

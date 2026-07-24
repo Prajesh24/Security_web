@@ -95,7 +95,7 @@ app.use(globalLimiter); // global rate limiting
 
 // ── Routes ────────────────────────────────────────────────────────────────────
 app.get('/api/health', (_req, res) => {
-  res.json({ success: true, message: 'GadgetHub API is running 🛒🔒' });
+  res.json({ success: true, message: 'GadgetHub API is running' });
 });
 
 app.use('/api/auth', authRoutes);

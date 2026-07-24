@@ -66,14 +66,14 @@ async function seed() {
           }
         : {}),
     });
-    console.log(`✅ ${p.role}: ${p.email} / ${p.password}`);
+    console.log(`${p.role}: ${p.email} / ${p.password}`);
   }
 
   await ProductModel.insertMany(products);
-  console.log(`✅ ${products.length} products added`);
+  console.log(`${products.length} products added`);
 
   await mongoose.connection.close();
-  console.log('🌱 Seed complete.');
+  console.log('Seed complete.');
   process.exit(0);
 }
 

@@ -112,7 +112,7 @@ class MonitoringService {
   private raise(alert: SecurityAlert): void {
     // Real-time surfacing. A log shipper / SIEM would forward this line.
     // eslint-disable-next-line no-console
-    console.warn(`🚨 [SECURITY ALERT][${alert.severity.toUpperCase()}] ${alert.type}: ${alert.message}`);
+    console.warn(`[SECURITY ALERT][${alert.severity.toUpperCase()}] ${alert.type}: ${alert.message}`);
     this.alerts.unshift(alert);
     if (this.alerts.length > MAX_ALERTS) this.alerts.length = MAX_ALERTS;
   }

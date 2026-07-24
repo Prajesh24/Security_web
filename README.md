@@ -1,4 +1,4 @@
-# 🛒 GadgetHub — Secure E-Commerce Store
+# GadgetHub — Secure E-Commerce Store
 
 A full-stack demonstration of **web application security** built for a security
 assignment. Shoppers can browse an electronics catalogue, add items to a cart,
@@ -137,7 +137,7 @@ docker compose exec backend node dist/seed.js   # seed demo data
 1. **Password hashing** — inspect a user in MongoDB: `password` is a `$2a$12$…`
    bcrypt hash, never plaintext.
 2. **httpOnly JWT** — after login, dev-tools → Application → Cookies: the
-   `token` cookie shows `HttpOnly ✓`, `SameSite=Strict`. JS `document.cookie`
+   `token` cookie shows `HttpOnly`, `SameSite=Strict`. JS `document.cookie`
    cannot read it.
 3. **Account lockout** — 10 wrong passwords → account locked 15 min (`429`);
    the event appears in the admin audit log.

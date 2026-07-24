@@ -82,7 +82,7 @@ function block(res: Response, req: Request, reason: string): void {
   // never reveal which rule fired (information leakage).
   // eslint-disable-next-line no-console
   console.warn(
-    `🛡️  WAF blocked ${req.method} ${req.originalUrl} from ${req.ip} — ${reason}`,
+    `WAF blocked ${req.method} ${req.originalUrl} from ${req.ip} - ${reason}`,
   );
   res.status(403).json({ success: false, message: 'Request blocked.' });
 }
