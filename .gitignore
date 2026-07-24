@@ -33,3 +33,6 @@ tmp/
 
 # Local assistant/editor state
 .claude/
+
+# Report / documentation (kept locally, not in repo)
+docs/
