@@ -76,12 +76,13 @@ export const OAUTH_GOOGLE_ENABLED: boolean = Boolean(
 export const RATE_LIMIT_DISABLED: boolean =
   process.env.RATE_LIMIT_DISABLED === 'true' && !IS_PROD;
 
-// Fail fast in production if the JWT secret was left at its default.
-if (IS_PROD && JWT_SECRET.startsWith('change_me')) {
-  throw new Error('JWT_SECRET must be set to a strong random value in production.');
+// Fail fast in production if the JWT secret was left at its default or is too
+// short to provide adequate entropy (>= 32 chars, e.g. `openssl rand -hex 32`).
+if (IS_PROD && (JWT_SECRET.startsWith('change_me') || JWT_SECRET.length < 32)) {
+  throw new Error('JWT_SECRET must be a strong random value (>= 32 chars) in production.');
 }
-// Same discipline for the encryption key — a default key means no real
+// Same discipline for the encryption key — a default or weak key means no real
 // confidentiality for encrypted-at-rest data.
-if (IS_PROD && ENCRYPTION_KEY.includes('change_me')) {
-  throw new Error('ENCRYPTION_KEY must be set to a strong random value in production.');
+if (IS_PROD && (ENCRYPTION_KEY.includes('change_me') || ENCRYPTION_KEY.length < 32)) {
+  throw new Error('ENCRYPTION_KEY must be a strong random value (>= 32 chars) in production.');
 }
