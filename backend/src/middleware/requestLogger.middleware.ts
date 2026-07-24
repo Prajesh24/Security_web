@@ -1,3 +1,4 @@
+import { randomUUID } from 'crypto';
 import { Request, Response, NextFunction } from 'express';
 
 /**
@@ -14,10 +15,15 @@ export function requestLogger(req: Request, res: Response, next: NextFunction): 
   // Skip health-check noise so real traffic stands out in the logs.
   if (req.path === '/api/health') return next();
 
+  // Correlation id so a single request can be traced across log lines and
+  // returned to the client for support/debugging.
+  const requestId = randomUUID();
+  res.setHeader('X-Request-Id', requestId);
+
   const start = process.hrtime.bigint();
   res.on('finish', () => {
     const ms = Number(process.hrtime.bigint() - start) / 1e6;
-    const line = `${new Date().toISOString()} ${req.method} ${req.originalUrl} ${
+    const line = `${new Date().toISOString()} ${requestId} ${req.method} ${req.originalUrl} ${
       res.statusCode
     } ${ms.toFixed(1)}ms ip=${req.ip}`;
     // eslint-disable-next-line no-console
