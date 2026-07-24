@@ -43,12 +43,23 @@ app.use(
         styleSrc: ["'self'", "'unsafe-inline'"],
         imgSrc: ["'self'", 'data:'],
         objectSrc: ["'none'"],
+        baseUri: ["'self'"], // block <base> hijacking
+        formAction: ["'self'"], // forms can only post to us
+        frameSrc: ["'none'"],
         frameAncestors: ["'none'"], // anti-clickjacking
       },
     },
+    // Force HTTPS for a year (with subdomains) once served over TLS.
+    hsts: { maxAge: 31536000, includeSubDomains: true, preload: true },
     crossOriginResourcePolicy: { policy: 'same-site' },
   }),
 );
+
+// Disable powerful browser features we never use (least privilege at the UA).
+app.use((_req, res, next) => {
+  res.setHeader('Permissions-Policy', 'camera=(), microphone=(), geolocation=(), payment=()');
+  next();
+});
 
 // ── CORS allowlist ────────────────────────────────────────────────────────────
 // Only known frontend origins may call the API, and credentials (cookies) are
