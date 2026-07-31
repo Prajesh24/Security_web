@@ -50,6 +50,14 @@ export class UserRepository {
     );
   }
 
+  // Look up the owner of a passkey by its credential id, for a usernameless
+  // login ceremony where the browser identifies the credential, not the user.
+  async findByCredentialId(credentialId: string): Promise<IUser | null> {
+    return decryptUserPII(
+      await UserModel.findOne({ 'webauthnCredentials.credentialId': credentialId }).exec(),
+    );
+  }
+
   async findAll(): Promise<IUser[]> {
     const users = await UserModel.find().sort({ createdAt: -1 }).exec();
     return users.map((u) => decryptUserPII(u));

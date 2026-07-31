@@ -1,5 +1,16 @@
 import mongoose, { Document, Schema } from 'mongoose';
 
+// A single registered FIDO2/WebAuthn credential (a passkey, security key, or
+// platform authenticator such as Touch ID/Face ID/Windows Hello).
+export interface IWebAuthnCredential {
+  credentialId: string; // base64url — the credential's public identifier
+  publicKey: string; // base64 — the COSE public key, used to verify signatures
+  counter: number; // signature counter; a non-increasing value signals a cloned credential
+  transports: string[]; // 'usb' | 'nfc' | 'ble' | 'internal' | 'hybrid'
+  deviceName: string; // user-chosen label, e.g. "MacBook Touch ID"
+  createdAt: Date;
+}
+
 export interface IUserProfile {
   displayName: string;
   bio: string;
@@ -43,6 +54,11 @@ export interface IUser extends Document {
   // Passwordless (magic-link) login: a single-use token hash + its expiry.
   magicTokenHash: string | null;
   magicTokenExpires: Date | null;
+  // WebAuthn/passkeys: registered credentials, and a short-lived challenge
+  // bound to the user during an in-progress registration or login ceremony.
+  webauthnCredentials: IWebAuthnCredential[];
+  currentChallenge: string | null;
+  currentChallengeExpires: Date | null;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -93,6 +109,21 @@ const userSchema = new Schema<IUser>(
     passwordHistory: { type: [String], default: [] },
     magicTokenHash: { type: String, default: null },
     magicTokenExpires: { type: Date, default: null },
+    webauthnCredentials: {
+      type: [
+        {
+          credentialId: { type: String, required: true },
+          publicKey: { type: String, required: true },
+          counter: { type: Number, required: true, default: 0 },
+          transports: { type: [String], default: [] },
+          deviceName: { type: String, default: 'Passkey' },
+          createdAt: { type: Date, default: Date.now },
+        },
+      ],
+      default: [],
+    },
+    currentChallenge: { type: String, default: null },
+    currentChallengeExpires: { type: Date, default: null },
   },
   { timestamps: true },
 );
@@ -109,6 +140,11 @@ userSchema.set('toJSON', {
     delete ret.magicTokenHash;
     delete ret.magicTokenExpires;
     delete ret.oauthId;
+    delete ret.currentChallenge;
+    delete ret.currentChallengeExpires;
+    // Never expose raw credential material (public key, credential id); the
+    // account page gets a minimal summary via a dedicated endpoint instead.
+    delete ret.webauthnCredentials;
     delete ret.__v;
     // Expose only whether MFA is on, never the secret material.
     return ret;
