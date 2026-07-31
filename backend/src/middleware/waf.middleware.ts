@@ -1,21 +1,5 @@
 import { Request, Response, NextFunction } from 'express';
 
-/**
- * Lightweight application-layer Web Application Firewall (WAF).
- *
- * In production a network WAF (e.g. Cloudflare, AWS WAF) should sit in front of
- * the app and absorb these signatures at the edge — see docs for the deployment
- * story. This in-process filter is defence-in-depth: it inspects the request
- * line and string values in the body/query for well-known attack signatures and
- * rejects them with a generic 403 before they reach any route handler.
- *
- * It is deliberately conservative — it matches unambiguous attack payloads
- * (script tags, event handlers, SQL/NoSQL operators, path traversal, template
- * injection) rather than individual keywords, to avoid blocking legitimate
- * shopper input such as product reviews or addresses.
- */
-
-// Signatures checked against the decoded URL (path + query string).
 const URL_SIGNATURES: RegExp[] = [
   /\.\.(?:\/|\\|%2f|%5c)/i, // path traversal
   /%00/, // null-byte injection
