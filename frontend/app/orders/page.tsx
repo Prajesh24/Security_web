@@ -9,11 +9,16 @@ interface OrderItem {
   price: number;
   quantity: number;
 }
+interface OrderPayment {
+  cardBrand: string;
+  cardLast4: string;
+}
 interface Order {
   _id: string;
   items: OrderItem[];
   total: number;
   status: string;
+  payment?: OrderPayment;
   createdAt: string;
 }
 
@@ -76,9 +81,16 @@ export default function OrdersPage() {
                 ))}
               </tbody>
             </table>
-            <p className="price" style={{ textAlign: 'right', marginTop: 10 }}>
-              Total: NPR {o.total.toLocaleString()}
-            </p>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 10 }}>
+              {o.payment && (
+                <span className="muted" style={{ fontSize: 12 }}>
+                  Paid with {o.payment.cardBrand} •••• {o.payment.cardLast4}
+                </span>
+              )}
+              <p className="price" style={{ marginLeft: 'auto' }}>
+                Total: NPR {o.total.toLocaleString()}
+              </p>
+            </div>
           </div>
         ))
       )}

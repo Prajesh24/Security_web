@@ -2,23 +2,13 @@
 
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { apiPost } from '../../lib/api';
 import { useAuth } from '../../lib/auth';
-import {
-  CartLine,
-  getCart,
-  setQuantity,
-  removeFromCart,
-  clearCart,
-} from '../../lib/cart';
+import { CartLine, getCart, setQuantity, removeFromCart } from '../../lib/cart';
 
 export default function CartPage() {
   const router = useRouter();
   const { user, loading: authLoading } = useAuth();
   const [lines, setLines] = useState<CartLine[]>([]);
-  const [error, setError] = useState('');
-  const [success, setSuccess] = useState('');
-  const [loading, setLoading] = useState(false);
 
   useEffect(() => setLines(getCart()), []);
 
@@ -48,36 +38,13 @@ export default function CartPage() {
     setLines(getCart());
   }
 
-  async function checkout() {
-    setError('');
-    setSuccess('');
-    setLoading(true);
-    // Send ONLY ids + quantities. The server computes the authoritative total.
-    const res = await apiPost('/api/orders/checkout', {
-      items: lines.map((l) => ({ productId: l.productId, quantity: l.quantity })),
-    });
-    setLoading(false);
-    if (res.ok) {
-      clearCart();
-      setLines([]);
-      setSuccess(
-        `Order placed! Total charged: NPR ${res.data.order.total.toLocaleString()}.`,
-      );
-    } else if (res.status === 401) {
-      router.push('/login?next=/cart');
-    } else {
-      setError(res.data?.message || 'Checkout failed.');
-    }
-  }
-
   return (
     <div className="container">
       <h1>Your Cart</h1>
       {lines.length === 0 ? (
         <div className="card">
           <p className="muted">
-            {success ? success : 'Your cart is empty.'}{' '}
-            <a href="/">Continue shopping →</a>
+            Your cart is empty. <a href="/">Continue shopping →</a>
           </p>
         </div>
       ) : (
@@ -130,21 +97,16 @@ export default function CartPage() {
             <button
               className="btn-primary"
               style={{ width: 'auto' }}
-              disabled={loading}
-              onClick={checkout}
+              onClick={() => router.push('/checkout')}
             >
-              {loading ? 'Placing…' : 'Checkout'}
+              Proceed to Checkout
             </button>
           </div>
           <p className="muted" style={{ fontSize: 12, marginTop: 10 }}>
             The final price is calculated on the server from live product data —
             the amounts shown here are for display only.
           </p>
-          {error && <div className="alert alert-error">{error}</div>}
         </div>
-      )}
-      {success && lines.length > 0 && (
-        <div className="alert alert-success">{success}</div>
       )}
     </div>
   );
