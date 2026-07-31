@@ -5,6 +5,10 @@ export class OrderRepository {
     return OrderModel.create(data);
   }
 
+  findById(id: string): Promise<IOrder | null> {
+    return OrderModel.findById(id).exec();
+  }
+
   // Ownership is enforced by always filtering on userId — a customer can only
   // ever read their own orders (prevents IDOR / broken object-level access).
   findByUser(userId: string): Promise<IOrder[]> {

@@ -20,5 +20,13 @@ export const CheckoutDTO = z.object({
     )
     .min(1, 'Your cart is empty')
     .max(50, 'Too many items in one order'),
+  // `token` is an opaque, single-use reference minted client-side by
+  // lib/payment.ts — the raw card number/expiry/CVC never reach this schema.
+  // `idempotencyKey` lets a retried request (e.g. a network blip) be
+  // recognised as the same attempt instead of double-charging the card.
+  payment: z.object({
+    token: z.string().min(10).max(2000),
+    idempotencyKey: z.string().uuid('idempotencyKey must be a UUID'),
+  }),
 });
 export type CheckoutDTO = z.infer<typeof CheckoutDTO>;
