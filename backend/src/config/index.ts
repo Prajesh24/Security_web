@@ -71,6 +71,16 @@ export const OAUTH_GOOGLE_ENABLED: boolean = Boolean(
   GOOGLE_CLIENT_ID && GOOGLE_CLIENT_SECRET,
 );
 
+// ── WebAuthn / Passkeys (FIDO2) ───────────────────────────────────────────────
+// Phishing-resistant passwordless authentication: a hardware key, Touch ID,
+// Face ID, or a synced passkey. RP_ID must be the bare domain (no scheme/port)
+// that the frontend is served from; the browser refuses the ceremony otherwise.
+// localhost is a valid RP ID for development — WebAuthn treats it as a secure
+// context without TLS.
+export const WEBAUTHN_RP_ID: string = process.env.WEBAUTHN_RP_ID || 'localhost';
+export const WEBAUTHN_RP_NAME: string = process.env.WEBAUTHN_RP_NAME || 'GadgetHub';
+export const WEBAUTHN_ORIGIN: string = process.env.WEBAUTHN_ORIGIN || CLIENT_URL;
+
 // Test-only escape hatch so the automated suite isn't throttled by the
 // in-memory rate limiters. Never enable this in production.
 export const RATE_LIMIT_DISABLED: boolean =
