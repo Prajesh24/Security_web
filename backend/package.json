@@ -16,6 +16,7 @@
     "test:ci": "RATE_LIMIT_DISABLED=true node --test \"tests/**/*.test.mjs\""
   },
   "dependencies": {
+    "@simplewebauthn/server": "^13.3.2",
     "bcryptjs": "^2.4.3",
     "cookie-parser": "^1.4.7",
     "cors": "^2.8.5",
