@@ -74,6 +74,8 @@ security web/
 | 32 | **PII field encryption at rest** (AES-256-GCM: phone, address) | `utils/pii.ts` | Confidentiality of personal data if the DB leaks |
 | 33 | **Gateway access logging** (metadata only, no PII) | `middleware/requestLogger.middleware.ts` | Blind spots: abuse, intrusion, performance |
 | 34 | **Strict CORS** (allowlist function; `"null"` origin rejected) | `app.ts` | Credentialed cross-origin abuse from sandboxed pages |
+| 35 | **WebAuthn / passkeys (FIDO2)** — phishing-resistant passwordless login (Touch ID, Face ID, Windows Hello, security keys) | `services/webauthn.service.ts` | Credential phishing, password reuse/theft, OTP interception |
+| 36 | **Tokenized payment procedure** — card number/expiry/CVC are validated and tokenized client-side (`frontend/lib/payment.ts`) and never reach the server; the backend charges a server-computed total via a mock gateway, is idempotent per request, and rolls back reserved stock on decline | `services/payment.service.ts`, `services/order.service.ts` | Card-data exposure (PCI-DSS scope), double-charging on retry, card-testing/carding |
 
 See also **[SECURITY.md](SECURITY.md)**, **[docs/SECURITY-CONCEPTS.md](docs/SECURITY-CONCEPTS.md)**
 (CIA triad, Laws of Nepal, CVSS, WAF/methodology write-ups for the report & viva),
@@ -158,6 +160,18 @@ docker compose exec backend node dist/seed.js   # seed demo data
     `Content-Security-Policy`, `X-Frame-Options`, `Strict-Transport-Security`, etc.
 12. **Audit log** — sign in as admin → `GET /api/admin/audit-logs`: logins,
     failed attempts, lockouts, orders, and product changes are all recorded.
+13. **Passkeys (WebAuthn)** — from `/account`, "Add a passkey" and register
+    Touch ID/Windows Hello/a security key (requires a real authenticator —
+    not available in headless/CI browsers). Sign out, then use "Sign in with
+    a passkey" on `/login`: no password is sent, and the credential is bound
+    to `localhost` — it cannot be phished by a look-alike domain.
+14. **Payment procedure** — add an item to the cart → `/checkout` → pay with
+    test card `4242 4242 4242 4242` (any future expiry/CVC) → order is
+    created with a `payment` snapshot (brand + last 4 only). Pay with
+    `4000 0000 0000 0002` instead → `402 Payment declined`, no order is
+    created, and reserved stock is rolled back. Open dev-tools → Network on
+    submit: only a `token`/`idempotencyKey` pair leaves the browser, never
+    the card number/expiry/CVC.
 
 Example `curl` for the price-tampering + CSRF demos:
 
