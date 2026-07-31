@@ -67,3 +67,7 @@ export function apiPost<T = any>(path: string, body?: unknown): Promise<ApiResul
 export function apiPatch<T = any>(path: string, body?: unknown): Promise<ApiResult<T>> {
   return stateChanging<T>('PATCH', path, body);
 }
+
+export function apiDelete<T = any>(path: string, body?: unknown): Promise<ApiResult<T>> {
+  return stateChanging<T>('DELETE', path, body);
+}
