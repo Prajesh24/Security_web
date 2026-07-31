@@ -39,3 +39,21 @@ export const authLimiter: RequestHandler = RATE_LIMIT_DISABLED
         message: 'Too many attempts from this network. Try again later.',
       },
     });
+
+/**
+ * Limiter for checkout/payment. Independent of the per-account/per-IP auth
+ * limiters: without it, an authenticated attacker could rapidly try many
+ * stolen card numbers against the checkout endpoint (card testing / carding).
+ */
+export const paymentLimiter: RequestHandler = RATE_LIMIT_DISABLED
+  ? passthrough
+  : rateLimit({
+      windowMs: 15 * 60 * 1000,
+      max: 20,
+      standardHeaders: true,
+      legacyHeaders: false,
+      message: {
+        success: false,
+        message: 'Too many payment attempts. Please try again later.',
+      },
+    });
