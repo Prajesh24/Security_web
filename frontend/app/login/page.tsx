@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { apiGet, apiPost } from '../../lib/api';
 import Captcha from '../../components/Captcha';
+import { loginWithPasskey, browserSupportsWebAuthn } from '../../lib/webauthn';
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:6060';
 
@@ -42,6 +43,33 @@ export default function LoginPage() {
   // Passwordless (magic-link) state.
   const [magicMode, setMagicMode] = useState(false);
   const [magicMsg, setMagicMsg] = useState('');
+
+  // Passkey (WebAuthn) login state.
+  const [passkeySupported, setPasskeySupported] = useState(false);
+  const [passkeyLoading, setPasskeyLoading] = useState(false);
+  useEffect(() => {
+    setPasskeySupported(browserSupportsWebAuthn());
+  }, []);
+
+  async function onPasskeyLogin() {
+    if (!email) {
+      setError('Enter your email above, then choose "Sign in with a passkey".');
+      return;
+    }
+    setError('');
+    setPasskeyLoading(true);
+    const result = await loginWithPasskey(email);
+    setPasskeyLoading(false);
+    if (result.status === 'ok') {
+      redirect();
+    } else if (result.status === 'unavailable') {
+      setError('No passkey is registered for this email. Sign in another way, or add one from Account after signing in.');
+    } else if (result.status === 'cancelled') {
+      // User backed out of the OS/browser prompt — no error needed.
+    } else {
+      setError(result.message || 'Passkey sign-in failed.');
+    }
+  }
 
   async function requestMagic(e: React.FormEvent) {
     e.preventDefault();
@@ -151,6 +179,20 @@ export default function LoginPage() {
             {loading ? 'Signing in…' : 'Sign In'}
           </button>
         </form>
+
+        {passkeySupported && (
+          <div style={{ marginTop: 16 }}>
+            <button
+              type="button"
+              className="btn-outline"
+              style={{ width: '100%' }}
+              onClick={onPasskeyLogin}
+              disabled={passkeyLoading}
+            >
+              {passkeyLoading ? 'Waiting for passkey…' : '🔐 Sign in with a passkey'}
+            </button>
+          </div>
+        )}
 
         {googleEnabled && (
           <div style={{ marginTop: 16 }}>

@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { apiGet, apiPost, apiPatch } from '../../lib/api';
 import PasswordStrength from '../../components/PasswordStrength';
+import { listPasskeys, registerPasskey, removePasskey, browserSupportsWebAuthn, Passkey } from '../../lib/webauthn';
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:6060';
 
@@ -63,6 +64,7 @@ export default function AccountPage() {
       {err && <div className="alert alert-error" role="alert">{err}</div>}
 
       <ProfileCard me={me} onSaved={(t) => { flash(setMsg, t); refresh(); }} onError={(t) => flash(setErr, t)} />
+      <PasskeyCard onChanged={(t) => flash(setMsg, t)} onError={(t) => flash(setErr, t)} />
       <MfaCard me={me} onChanged={(t) => { flash(setMsg, t); refresh(); }} onError={(t) => flash(setErr, t)} />
       <PasswordCard onDone={(t) => flash(setMsg, t)} onError={(t) => flash(setErr, t)} />
       <DataCard onDone={(t) => { flash(setMsg, t); refresh(); }} onError={(t) => flash(setErr, t)} />
@@ -116,6 +118,92 @@ function ProfileCard({ me, onSaved, onError }: { me: Me; onSaved: (t: string) =>
           Receive marketing emails
         </label>
         <button className="btn-primary" type="submit">Save profile</button>
+      </form>
+    </div>
+  );
+}
+
+/* ── Passkeys (WebAuthn) ──────────────────────────────────────────────────── */
+function PasskeyCard({ onChanged, onError }: { onChanged: (t: string) => void; onError: (t: string) => void }) {
+  const [supported, setSupported] = useState(false);
+  const [passkeys, setPasskeys] = useState<Passkey[]>([]);
+  const [deviceName, setDeviceName] = useState('');
+  const [adding, setAdding] = useState(false);
+
+  async function load() {
+    setPasskeys(await listPasskeys());
+  }
+  useEffect(() => {
+    setSupported(browserSupportsWebAuthn());
+    load();
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  async function add(e: React.FormEvent) {
+    e.preventDefault();
+    setAdding(true);
+    try {
+      await registerPasskey(deviceName || 'Passkey');
+      setDeviceName('');
+      onChanged('Passkey added.');
+      await load();
+    } catch (err: any) {
+      onError(err?.message || 'Could not add passkey.');
+    } finally {
+      setAdding(false);
+    }
+  }
+
+  async function remove(credentialId: string) {
+    if (await removePasskey(credentialId)) {
+      onChanged('Passkey removed.');
+      await load();
+    } else {
+      onError('Could not remove passkey.');
+    }
+  }
+
+  if (!supported) return null;
+
+  return (
+    <div className="card">
+      <h2>Passkeys</h2>
+      <p className="muted">
+        Sign in with Touch ID, Face ID, Windows Hello, or a security key — no password to steal or phish.
+      </p>
+
+      {passkeys.length > 0 && (
+        <table style={{ marginBottom: 12 }}>
+          <tbody>
+            {passkeys.map((p) => (
+              <tr key={p.credentialId}>
+                <td>{p.deviceName}</td>
+                <td className="muted" style={{ fontSize: 12 }}>
+                  Added {new Date(p.createdAt).toLocaleDateString()}
+                </td>
+                <td className="right">
+                  <button className="btn-danger btn-sm" onClick={() => remove(p.credentialId)}>
+                    Remove
+                  </button>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      )}
+
+      <form onSubmit={add} style={{ display: 'flex', gap: 8, alignItems: 'flex-end', flexWrap: 'wrap' }}>
+        <div style={{ flex: 1, minWidth: 160 }}>
+          <label htmlFor="pk-name">Name this device</label>
+          <input
+            id="pk-name"
+            placeholder="e.g. MacBook Touch ID"
+            value={deviceName}
+            onChange={(e) => setDeviceName(e.target.value)}
+          />
+        </div>
+        <button className="btn-outline btn-sm" type="submit" disabled={adding}>
+          {adding ? 'Waiting for device…' : '+ Add a passkey'}
+        </button>
       </form>
     </div>
   );
